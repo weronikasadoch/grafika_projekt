@@ -1,1 +1,1 @@
-# grafika_projekt
+# Grafika projekt "Świat Spongeboba"
