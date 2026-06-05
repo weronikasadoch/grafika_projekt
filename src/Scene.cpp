@@ -18,7 +18,7 @@ void Scene::updateFramebufferSize(int width, int height)
 
 void Scene::processInput(GLFWwindow* window)
 {
-    updateOutlineSlider(window);
+    updateUi(window);
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
@@ -28,11 +28,11 @@ void Scene::processInput(GLFWwindow* window)
     const float rotationVelocity = kCameraRotationSpeed * deltaTime_;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
-        camera_.rotateYaw(-rotationVelocity);
+        camera_.rotateYaw(rotationVelocity);
     }
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
-        camera_.rotateYaw(rotationVelocity);
+        camera_.rotateYaw(-rotationVelocity);
     }
 
     const float velocity = kCameraSpeed * deltaTime_;
@@ -95,11 +95,18 @@ float Scene::getOutlineSliderValue() const
     return (outlineThickness_ - kOutlineMinThickness) / (kOutlineMaxThickness - kOutlineMinThickness);
 }
 
-void Scene::updateOutlineSlider(GLFWwindow* window)
+bool Scene::isToonShadingEnabled() const
 {
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) != GLFW_PRESS)
+    return toonShadingEnabled_;
+}
+
+void Scene::updateUi(GLFWwindow* window)
+{
+    const bool isLeftMousePressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+    if (!isLeftMousePressed)
     {
         isDraggingOutlineSlider_ = false;
+        wasLeftMousePressed_ = false;
         return;
     }
 
@@ -119,6 +126,17 @@ void Scene::updateOutlineSlider(GLFWwindow* window)
         framebufferX <= kOutlineSliderX + kOutlineSliderWidth &&
         framebufferY >= kOutlineSliderY &&
         framebufferY <= kOutlineSliderY + kOutlineSliderHeight;
+    const bool isOverToonToggle =
+        framebufferX >= kToonToggleX &&
+        framebufferX <= kToonToggleX + kToonToggleWidth &&
+        framebufferY >= kToonToggleY &&
+        framebufferY <= kToonToggleY + kToonToggleHeight;
+
+    if (!wasLeftMousePressed_ && isOverToonToggle)
+    {
+        toonShadingEnabled_ = !toonShadingEnabled_;
+    }
+    wasLeftMousePressed_ = true;
 
     if (!isDraggingOutlineSlider_ && !isOverSlider)
     {

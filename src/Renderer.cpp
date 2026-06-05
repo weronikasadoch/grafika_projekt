@@ -68,10 +68,11 @@ void Renderer::render(const Scene& scene)
     glClearColor(0.10f, 0.72f, 0.78f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    renderMesh(sand_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), true);
-    renderSphere(leftSphere, view, projection, glm::vec3(1.0f, 0.82f, 0.24f), scene.getOutlineThickness());
-    renderSphere(rightSphere, view, projection, glm::vec3(0.28f, 0.72f, 1.0f), scene.getOutlineThickness());
+    renderMesh(sand_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), true, scene.isToonShadingEnabled());
+    renderSphere(leftSphere, view, projection, glm::vec3(1.0f, 0.82f, 0.24f), scene.getOutlineThickness(), scene.isToonShadingEnabled());
+    renderSphere(rightSphere, view, projection, glm::vec3(0.28f, 0.72f, 1.0f), scene.getOutlineThickness(), scene.isToonShadingEnabled());
     renderOutlineSlider(scene);
+    renderToonToggle(scene);
 }
 
 void Renderer::shutdown()
@@ -265,7 +266,7 @@ void Renderer::deleteShadowResources()
     shadowFbo_ = 0;
 }
 
-void Renderer::renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness) const
+void Renderer::renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness, bool useToonShading) const
 {
     glEnable(GL_CULL_FACE);
 
@@ -288,13 +289,14 @@ void Renderer::renderSphere(const glm::mat4& model, const glm::mat4& view, const
     setVec3(toonProgram_, "uLightDirection", kLightDirection);
     setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.08f, 0.18f, 0.22f));
     setInt(toonProgram_, "uReceiveShadow", 0);
+    setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
     drawSphere();
 
     glUseProgram(0);
     glDisable(GL_CULL_FACE);
 }
 
-void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow) const
+void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow, bool useToonShading) const
 {
     glUseProgram(toonProgram_);
     setMat4(toonProgram_, "uModel", model);
@@ -305,6 +307,7 @@ void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::m
     setVec3(toonProgram_, "uLightDirection", kLightDirection);
     setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.08f, 0.18f, 0.22f));
     setInt(toonProgram_, "uReceiveShadow", receiveShadow ? 1 : 0);
+    setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
     setInt(toonProgram_, "uShadowMap", 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
@@ -358,6 +361,27 @@ void Renderer::renderOutlineSlider(const Scene& scene) const
     glEnable(GL_DEPTH_TEST);
 }
 
+void Renderer::renderToonToggle(const Scene& scene) const
+{
+    const float x = Scene::kToonToggleX;
+    const float y = Scene::kToonToggleY;
+    const float width = Scene::kToonToggleWidth;
+    const float height = Scene::kToonToggleHeight;
+    const bool isEnabled = scene.isToonShadingEnabled();
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glUseProgram(uiProgram_);
+    glUniform2f(glGetUniformLocation(uiProgram_, "uScreenSize"), scene.getFramebufferWidth(), scene.getFramebufferHeight());
+
+    drawUiQuad(x - 4.0f, y - 4.0f, width + 8.0f, height + 8.0f, glm::vec3(0.03f, 0.11f, 0.18f));
+    drawUiQuad(x, y, width, height, isEnabled ? glm::vec3(0.0f, 0.16f, 0.44f) : glm::vec3(0.12f, 0.16f, 0.19f));
+    drawUiText(x + 9.0f, y + 7.0f, isEnabled ? "TOON ON" : "TOON OFF", 2.0f, isEnabled ? glm::vec3(0.92f, 0.95f, 1.0f) : glm::vec3(0.62f, 0.68f, 0.72f));
+
+    glUseProgram(0);
+    glEnable(GL_DEPTH_TEST);
+}
+
 void Renderer::drawSphere() const
 {
     drawMesh(sphere_);
@@ -388,6 +412,67 @@ void Renderer::drawUiQuad(float x, float y, float width, float height, const glm
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+}
+
+void Renderer::drawUiText(float x, float y, const char* text, float scale, const glm::vec3& color) const
+{
+    float cursorX = x;
+    for (const char* character = text; *character != '\0'; ++character)
+    {
+        if (*character == ' ')
+        {
+            cursorX += 4.0f * scale;
+            continue;
+        }
+
+        drawUiGlyph(cursorX, y, *character, scale, color);
+        cursorX += 6.0f * scale;
+    }
+}
+
+void Renderer::drawUiGlyph(float x, float y, char glyph, float scale, const glm::vec3& color) const
+{
+    const char* pattern[7] = {};
+    switch (glyph)
+    {
+        case 'T':
+        {
+            static const char* t[] = {"11111", "00100", "00100", "00100", "00100", "00100", "00100"};
+            for (int i = 0; i < 7; ++i) pattern[i] = t[i];
+            break;
+        }
+        case 'O':
+        {
+            static const char* o[] = {"01110", "10001", "10001", "10001", "10001", "10001", "01110"};
+            for (int i = 0; i < 7; ++i) pattern[i] = o[i];
+            break;
+        }
+        case 'N':
+        {
+            static const char* n[] = {"10001", "11001", "10101", "10011", "10001", "10001", "10001"};
+            for (int i = 0; i < 7; ++i) pattern[i] = n[i];
+            break;
+        }
+        case 'F':
+        {
+            static const char* f[] = {"11111", "10000", "10000", "11110", "10000", "10000", "10000"};
+            for (int i = 0; i < 7; ++i) pattern[i] = f[i];
+            break;
+        }
+        default:
+            return;
+    }
+
+    for (int row = 0; row < 7; ++row)
+    {
+        for (int column = 0; column < 5; ++column)
+        {
+            if (pattern[row][column] == '1')
+            {
+                drawUiQuad(x + static_cast<float>(column) * scale, y + static_cast<float>(row) * scale, scale, scale, color);
+            }
+        }
+    }
 }
 
 glm::mat4 Renderer::createLightSpaceMatrix() const

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "glm.hpp"
+#include <gtc/quaternion.hpp>
 
 class Camera
 {
@@ -8,21 +9,19 @@ public:
     void moveForward(float distance);
     void moveRight(float distance);
     void rotateYaw(float degrees);
+    void rotate(float yawDegrees, float pitchDegrees, float rollDegrees = 0.0f);
 
     glm::mat4 getViewMatrix() const;
     glm::mat4 getProjectionMatrix(float aspect) const;
 
     const glm::vec3& getPosition() const;
-    const glm::vec3& getFront() const;
-    const glm::vec3& getUp() const;
+    glm::vec3 getFront() const;
+    glm::vec3 getRight() const;
+    glm::vec3 getUp() const;
 
 private:
-    void updateFront();
-
     glm::vec3 position_ = glm::vec3(0.0f, 0.0f, 4.0f);
-    glm::vec3 front_ = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 up_ = glm::vec3(0.0f, 1.0f, 0.0f);
-    float yaw_ = -90.0f;
+    glm::quat orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 };
 
 namespace Core

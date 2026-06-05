@@ -13,6 +13,10 @@ public:
     static constexpr float kOutlineSliderY = 24.0f;
     static constexpr float kOutlineSliderWidth = 220.0f;
     static constexpr float kOutlineSliderHeight = 18.0f;
+    static constexpr float kToonToggleX = 24.0f;
+    static constexpr float kToonToggleY = 58.0f;
+    static constexpr float kToonToggleWidth = 118.0f;
+    static constexpr float kToonToggleHeight = 28.0f;
 
     Scene(int width, int height);
 
@@ -27,12 +31,13 @@ public:
     float getFramebufferHeight() const;
     float getOutlineThickness() const;
     float getOutlineSliderValue() const;
+    bool isToonShadingEnabled() const;
 
 private:
     static constexpr float kCameraSpeed = 2.5f;
     static constexpr float kCameraRotationSpeed = 90.0f;
 
-    void updateOutlineSlider(GLFWwindow* window);
+    void updateUi(GLFWwindow* window);
     void setOutlineThickness(float thickness);
 
     Camera camera_;
@@ -41,5 +46,7 @@ private:
     float lastFrameTime_ = 0.0f;
     float deltaTime_ = 0.0f;
     float outlineThickness_ = 0.05f;
+    bool toonShadingEnabled_ = true;
     bool isDraggingOutlineSlider_ = false;
+    bool wasLeftMousePressed_ = false;
 };

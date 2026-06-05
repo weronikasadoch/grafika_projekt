@@ -8,6 +8,7 @@ uniform vec3 uLightDirection;
 uniform vec3 uAmbientColor;
 uniform sampler2D uShadowMap;
 uniform int uReceiveShadow;
+uniform int uUseToonShading;
 
 out vec4 fragColor;
 
@@ -44,14 +45,18 @@ void main()
     vec3 lightDir = normalize(-uLightDirection);
     float ndotl = max(dot(normal, lightDir), 0.0);
 
-    float shade = 0.35; // dark
-    if (ndotl > 0.75)
+    float shade = 0.25 + ndotl * 0.75;
+    if (uUseToonShading == 1)
     {
-        shade = 1.0; // bright
-    }
-    else if (ndotl > 0.35)
-    {
-        shade = 0.65; // middle
+        shade = 0.35; // dark
+        if (ndotl > 0.75)
+        {
+            shade = 1.0; // bright
+        }
+        else if (ndotl > 0.35)
+        {
+            shade = 0.65; // middle
+        }
     }
 
     float shadow = uReceiveShadow == 1 ? calculateShadow() : 0.0;
