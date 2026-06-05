@@ -1,5 +1,8 @@
-﻿#include <GL/glew.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
+#include "Renderer.h"
+#include "Scene.h"
 
 #include <iostream>
 
@@ -10,22 +13,21 @@ namespace
 
     void framebufferSizeCallback(GLFWwindow* window, int width, int height)
     {
-        (void)window;
+        auto* scene = static_cast<Scene*>(glfwGetWindowUserPointer(window));
+        if (scene != nullptr)
+        {
+            scene->updateFramebufferSize(width, height);
+        }
+
         glViewport(0, 0, width, height);
     }
 
-    void processInput(GLFWwindow* window)
+    void updateFramebufferSize(GLFWwindow* window)
     {
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        {
-            glfwSetWindowShouldClose(window, true);
-        }
-    }
-
-    void renderFrame()
-    {
-        glClearColor(0.10f, 0.72f, 0.78f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
+        framebufferSizeCallback(window, framebufferWidth, framebufferHeight);
     }
 }
 
@@ -61,6 +63,9 @@ int main()
     }
 
     glfwMakeContextCurrent(window);
+
+    Scene scene(kWindowWidth, kWindowHeight);
+    glfwSetWindowUserPointer(window, &scene);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
     glewExperimental = GL_TRUE;
@@ -72,18 +77,30 @@ int main()
         return -1;
     }
 
-    glViewport(0, 0, kWindowWidth, kWindowHeight);
-    glEnable(GL_DEPTH_TEST);
+    updateFramebufferSize(window);
+
+    Renderer renderer;
+    if (!renderer.initialize())
+    {
+        std::cerr << "Failed to initialize renderer\n";
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return -1;
+    }
+
+    scene.updateDeltaTime(static_cast<float>(glfwGetTime()));
 
     while (!glfwWindowShouldClose(window))
     {
-        processInput(window);
-        renderFrame();
+        scene.updateDeltaTime(static_cast<float>(glfwGetTime()));
+        scene.processInput(window);
+        renderer.render(scene);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    renderer.shutdown();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;

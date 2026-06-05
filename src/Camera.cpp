@@ -1,5 +1,60 @@
 #include "Camera.h"
 
+#include <gtc/matrix_transform.hpp>
+
+#include <cmath>
+
+void Camera::moveForward(float distance)
+{
+    position_ += front_ * distance;
+}
+
+void Camera::moveRight(float distance)
+{
+    const glm::vec3 right = glm::normalize(glm::cross(front_, up_));
+    position_ += right * distance;
+}
+
+void Camera::rotateYaw(float degrees)
+{
+    yaw_ += degrees;
+    updateFront();
+}
+
+glm::mat4 Camera::getViewMatrix() const
+{
+    return glm::lookAt(position_, position_ + front_, up_);
+}
+
+glm::mat4 Camera::getProjectionMatrix(float aspect) const
+{
+    return glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+}
+
+const glm::vec3& Camera::getPosition() const
+{
+    return position_;
+}
+
+const glm::vec3& Camera::getFront() const
+{
+    return front_;
+}
+
+const glm::vec3& Camera::getUp() const
+{
+    return up_;
+}
+
+void Camera::updateFront()
+{
+    front_ = glm::normalize(glm::vec3(
+        std::cos(glm::radians(yaw_)),
+        0.0f,
+        std::sin(glm::radians(yaw_))
+    ));
+}
+
 glm::mat4 Core::createPerspectiveMatrix(float zNear, float zFar, float frustumScale)
 {
 	glm::mat4 perspective;
