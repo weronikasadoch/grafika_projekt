@@ -14,6 +14,7 @@ uniform int uReceiveShadow;
 uniform int uUseToonShading;
 uniform int uUseMaterialColor;
 uniform int uUseDiffuseTexture;
+uniform float uMaterialBrightness;
 
 out vec4 fragColor;
 
@@ -65,7 +66,7 @@ void main()
     }
 
     float shadow = uReceiveShadow == 1 ? calculateShadow() : 0.0;
-    vec3 surfaceColor = uUseMaterialColor == 1 ? vMaterialColor : uBaseColor;
+    vec3 surfaceColor = uUseMaterialColor == 1 ? vMaterialColor * uMaterialBrightness : uBaseColor;
     if (uUseDiffuseTexture == 1)
     {
         surfaceColor *= texture(uDiffuseTexture, vTexCoord).rgb;
