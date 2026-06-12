@@ -36,6 +36,10 @@ bool Renderer::initialize()
     shadowProgram_ = shaderLoader.CreateProgram(shadowVertexShaderPath, shadowFragmentShaderPath);
     sphere_ = createSphereMesh(1.0f, 48, 24);
     sand_ = createSandMesh(16.0f);
+    const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house_1.obj");
+    const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
+    const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
+    spongebobFallbackTexture_.createSolidColor(255, 214, 54);
     createUiResources();
     const bool shadowResourcesCreated = createShadowResources();
 
@@ -45,6 +49,9 @@ bool Renderer::initialize()
         shadowProgram_ != 0 &&
         sphere_.vao != 0 &&
         sand_.vao != 0 &&
+        spongebobLoaded &&
+        patrickLoaded &&
+        squidwardLoaded &&
         uiVao_ != 0 &&
         shadowResourcesCreated;
 }
@@ -56,21 +63,29 @@ void Renderer::render(const Scene& scene)
     const glm::mat4 lightSpace = createLightSpaceMatrix();
 
     const glm::mat4 sand = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.05f, 0.0f));
-    const glm::mat4 leftSphere = glm::translate(glm::mat4(1.0f), glm::vec3(-1.2f, 0.0f, 0.0f));
-    const glm::mat4 rightSphere = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(1.35f, 0.15f, -0.35f)),
-        glm::vec3(0.75f)
+    const glm::mat4 spongebobModel = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -0.90f, -2.6f)),
+        glm::vec3(0.45f)
+    );
+    const glm::mat4 patrickModel = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.90f, -3.0f)),
+        glm::vec3(0.45f)
+    );
+    const glm::mat4 squidwardModel = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.20f, -2.6f)),
+        glm::vec3(0.45f)
     );
 
-    renderShadowMap(lightSpace, leftSphere, rightSphere);
+    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel);
 
     glViewport(0, 0, static_cast<GLsizei>(scene.getFramebufferWidth()), static_cast<GLsizei>(scene.getFramebufferHeight()));
     glClearColor(0.10f, 0.72f, 0.78f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     renderMesh(sand_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), true, scene.isToonShadingEnabled());
-    renderSphere(leftSphere, view, projection, glm::vec3(1.0f, 0.82f, 0.24f), scene.getOutlineThickness(), scene.isToonShadingEnabled());
-    renderSphere(rightSphere, view, projection, glm::vec3(0.28f, 0.72f, 1.0f), scene.getOutlineThickness(), scene.isToonShadingEnabled());
+    renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), scene.getOutlineThickness(), true, scene.isToonShadingEnabled());
+    renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), scene.getOutlineThickness(), true, scene.isToonShadingEnabled());
+    renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), scene.getOutlineThickness(), true, scene.isToonShadingEnabled());
     renderOutlineSlider(scene);
     renderToonToggle(scene);
 }
@@ -79,6 +94,10 @@ void Renderer::shutdown()
 {
     deleteUiResources();
     deleteShadowResources();
+    spongebobFallbackTexture_.destroy();
+    squidwardModel_.destroy();
+    patrickModel_.destroy();
+    spongebobModel_.destroy();
     deleteMesh(sand_);
     deleteMesh(sphere_);
     glDeleteProgram(shadowProgram_);
@@ -290,7 +309,50 @@ void Renderer::renderSphere(const glm::mat4& model, const glm::mat4& view, const
     setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.08f, 0.18f, 0.22f));
     setInt(toonProgram_, "uReceiveShadow", 0);
     setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
+    setInt(toonProgram_, "uUseMaterialColor", 0);
+    setInt(toonProgram_, "uUseDiffuseTexture", 0);
     drawSphere();
+
+    glUseProgram(0);
+    glDisable(GL_CULL_FACE);
+}
+
+void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, bool receiveShadow, bool useToonShading) const
+{
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+
+    glEnable(GL_CULL_FACE);
+
+    glCullFace(GL_FRONT);
+    glUseProgram(outlineProgram_);
+    setMat4(outlineProgram_, "uModel", model);
+    setMat4(outlineProgram_, "uView", view);
+    setMat4(outlineProgram_, "uProjection", projection);
+    setFloat(outlineProgram_, "uOutlineThickness", outlineThickness);
+    setVec3(outlineProgram_, "uOutlineColor", glm::vec3(0.0f, 0.04f, 0.22f));
+    assetModel.draw();
+
+    glCullFace(GL_BACK);
+    glUseProgram(toonProgram_);
+    setMat4(toonProgram_, "uModel", model);
+    setMat4(toonProgram_, "uView", view);
+    setMat4(toonProgram_, "uProjection", projection);
+    setMat4(toonProgram_, "uLightSpaceMatrix", lightSpace);
+    setVec3(toonProgram_, "uBaseColor", baseColor);
+    setVec3(toonProgram_, "uLightDirection", kLightDirection);
+    setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.08f, 0.18f, 0.22f));
+    setInt(toonProgram_, "uReceiveShadow", receiveShadow ? 1 : 0);
+    setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
+    setInt(toonProgram_, "uUseMaterialColor", 1);
+    setInt(toonProgram_, "uUseDiffuseTexture", 0);
+    setInt(toonProgram_, "uShadowMap", 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+    assetModel.draw();
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glUseProgram(0);
     glDisable(GL_CULL_FACE);
@@ -308,6 +370,8 @@ void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::m
     setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.08f, 0.18f, 0.22f));
     setInt(toonProgram_, "uReceiveShadow", receiveShadow ? 1 : 0);
     setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
+    setInt(toonProgram_, "uUseMaterialColor", 0);
+    setInt(toonProgram_, "uUseDiffuseTexture", 0);
     setInt(toonProgram_, "uShadowMap", 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
@@ -316,15 +380,16 @@ void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::m
     glUseProgram(0);
 }
 
-void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& leftSphere, const glm::mat4& rightSphere) const
+void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform) const
 {
     glViewport(0, 0, kShadowMapSize, kShadowMapSize);
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
     glClear(GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shadowProgram_);
-    renderShadowCaster(lightSpace, leftSphere);
-    renderShadowCaster(lightSpace, rightSphere);
+    renderModelShadowCaster(spongebobModel_, lightSpace, spongebobTransform);
+    renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
+    renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
     glUseProgram(0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -335,6 +400,18 @@ void Renderer::renderShadowCaster(const glm::mat4& lightSpace, const glm::mat4& 
     setMat4(shadowProgram_, "uLightSpaceMatrix", lightSpace);
     setMat4(shadowProgram_, "uModel", model);
     drawSphere();
+}
+
+void Renderer::renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const
+{
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+
+    setMat4(shadowProgram_, "uLightSpaceMatrix", lightSpace);
+    setMat4(shadowProgram_, "uModel", model);
+    assetModel.draw();
 }
 
 void Renderer::renderOutlineSlider(const Scene& scene) const

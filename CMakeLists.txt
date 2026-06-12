@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(APP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(APP_SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+set(APP_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 
 add_executable(grafika_projekt
     "${APP_SOURCE_DIR}/main.cpp"
@@ -18,6 +19,8 @@ add_executable(grafika_projekt
     "${APP_SOURCE_DIR}/Scene.cpp"
     "${APP_SOURCE_DIR}/Renderer.h"
     "${APP_SOURCE_DIR}/Renderer.cpp"
+    "${APP_SOURCE_DIR}/Model.h"
+    "${APP_SOURCE_DIR}/Model.cpp"
     "${APP_SOURCE_DIR}/Render_Utils.h"
     "${APP_SOURCE_DIR}/Render_Utils.cpp"
     "${APP_SOURCE_DIR}/Shader_Loader.h"
@@ -81,4 +84,7 @@ add_custom_command(TARGET grafika_projekt POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${APP_SHADER_DIR}"
         "$<TARGET_FILE_DIR:grafika_projekt>/shaders"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${APP_ASSET_DIR}"
+        "$<TARGET_FILE_DIR:grafika_projekt>/assets"
 )

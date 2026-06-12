@@ -3,6 +3,8 @@
 #include <GL/glew.h>
 #include <glm.hpp>
 
+#include "Model.h"
+
 class Scene;
 
 class Renderer
@@ -22,9 +24,11 @@ private:
     };
 
     void renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness, bool useToonShading) const;
+    void renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, bool receiveShadow, bool useToonShading) const;
     void renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow, bool useToonShading) const;
-    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& leftSphere, const glm::mat4& rightSphere) const;
+    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform) const;
     void renderShadowCaster(const glm::mat4& lightSpace, const glm::mat4& model) const;
+    void renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderOutlineSlider(const Scene& scene) const;
     void renderToonToggle(const Scene& scene) const;
     Mesh createSphereMesh(float radius, int sectors, int stacks) const;
@@ -55,4 +59,8 @@ private:
     GLuint uiVbo_ = 0;
     Mesh sphere_;
     Mesh sand_;
+    Model spongebobModel_;
+    Model patrickModel_;
+    Model squidwardModel_;
+    Texture spongebobFallbackTexture_;
 };
