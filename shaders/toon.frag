@@ -2,12 +2,19 @@
 
 in vec3 vWorldNormal;
 in vec4 vLightSpacePosition;
+in vec2 vTexCoord;
+in vec3 vMaterialColor;
 
 uniform vec3 uBaseColor;
 uniform vec3 uLightDirection;
 uniform vec3 uAmbientColor;
 uniform sampler2D uShadowMap;
+uniform sampler2D uDiffuseTexture;
 uniform int uReceiveShadow;
+uniform int uUseToonShading;
+uniform int uUseMaterialColor;
+uniform int uUseDiffuseTexture;
+uniform float uMaterialBrightness;
 
 out vec4 fragColor;
 
@@ -44,18 +51,28 @@ void main()
     vec3 lightDir = normalize(-uLightDirection);
     float ndotl = max(dot(normal, lightDir), 0.0);
 
-    float shade = 0.35; // dark
-    if (ndotl > 0.75)
+    float shade = 0.25 + ndotl * 0.75;
+    if (uUseToonShading == 1)
     {
-        shade = 1.0; // bright
-    }
-    else if (ndotl > 0.35)
-    {
-        shade = 0.65; // middle
+        shade = 0.35; // dark
+        if (ndotl > 0.75)
+        {
+            shade = 1.0; // bright
+        }
+        else if (ndotl > 0.35)
+        {
+            shade = 0.65; // middle
+        }
     }
 
     float shadow = uReceiveShadow == 1 ? calculateShadow() : 0.0;
-    vec3 litColor = uBaseColor * shade;
+    vec3 surfaceColor = uUseMaterialColor == 1 ? vMaterialColor * uMaterialBrightness : uBaseColor;
+    if (uUseDiffuseTexture == 1)
+    {
+        surfaceColor *= texture(uDiffuseTexture, vTexCoord).rgb;
+    }
+
+    vec3 litColor = surfaceColor * shade;
     litColor *= mix(1.0, 0.45, shadow);
 
     vec3 color = clamp(litColor + uAmbientColor, 0.0, 1.0);

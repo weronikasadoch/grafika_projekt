@@ -3,6 +3,8 @@
 #include <GL/glew.h>
 #include <glm.hpp>
 
+#include "Model.h"
+
 class Scene;
 
 class Renderer
@@ -21,11 +23,14 @@ private:
         GLsizei indexCount = 0;
     };
 
-    void renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness) const;
-    void renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow) const;
-    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& leftSphere, const glm::mat4& rightSphere) const;
+    void renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness, bool useToonShading) const;
+    void renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool receiveShadow, bool useToonShading) const;
+    void renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow, bool useToonShading) const;
+    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform) const;
     void renderShadowCaster(const glm::mat4& lightSpace, const glm::mat4& model) const;
+    void renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderOutlineSlider(const Scene& scene) const;
+    void renderToonToggle(const Scene& scene) const;
     Mesh createSphereMesh(float radius, int sectors, int stacks) const;
     Mesh createSandMesh(float size) const;
     void createUiResources();
@@ -36,6 +41,8 @@ private:
     void drawSphere() const;
     void drawMesh(const Mesh& mesh) const;
     void drawUiQuad(float x, float y, float width, float height, const glm::vec3& color) const;
+    void drawUiText(float x, float y, const char* text, float scale, const glm::vec3& color) const;
+    void drawUiGlyph(float x, float y, char glyph, float scale, const glm::vec3& color) const;
     glm::mat4 createLightSpaceMatrix() const;
     void setMat4(GLuint program, const char* name, const glm::mat4& value) const;
     void setVec3(GLuint program, const char* name, const glm::vec3& value) const;
@@ -51,5 +58,9 @@ private:
     GLuint uiVao_ = 0;
     GLuint uiVbo_ = 0;
     Mesh sphere_;
-    Mesh sand_;
+    Model sandModel_;
+    Model spongebobModel_;
+    Model patrickModel_;
+    Model squidwardModel_;
+    Texture spongebobFallbackTexture_;
 };
