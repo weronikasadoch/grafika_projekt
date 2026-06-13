@@ -30,8 +30,12 @@ cmake_install.cmake
 Makefile
 compile_commands.json
 
-# macOS
+# Windows 
+.vs/
+ipch/
+*.ipch
+
+# macOS 
 .DS_Store
-/.vs/Projekt/CopilotIndices/18.7.1225.11805
-/.vs/Projekt.slnx/copilot-chat/31ee7806/sessions
-/.vs/Projekt.slnx/FileContentIndex
+.AppleDouble
+.LSOverride

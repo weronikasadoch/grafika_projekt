@@ -39,6 +39,7 @@ bool Renderer::initialize()
     const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house_1.obj");
     const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
+    const bool characterLoaded = characterModel_.loadFromObj("assets/models/Spongebob_model/spongebob_model.obj");
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
     createUiResources();
     const bool shadowResourcesCreated = createShadowResources();
@@ -52,6 +53,7 @@ bool Renderer::initialize()
         spongebobLoaded &&
         patrickLoaded &&
         squidwardLoaded &&
+        characterLoaded &&
         uiVao_ != 0 &&
         shadowResourcesCreated;
 }
@@ -75,8 +77,22 @@ void Renderer::render(const Scene& scene)
         glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.20f, -2.6f)),
         glm::vec3(0.45f)
     );
+    glm::vec3 charPos = scene.getCharacterPosition();
+    float charYaw = scene.getCharacterYaw();
 
-    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel);
+    glm::mat4 characterModel = glm::mat4(1.0f);
+    characterModel = glm::translate(characterModel, charPos); // <-- Tutaj aplikujemy ruch!
+    //characterModel = glm::rotate(characterModel, -charYaw - glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Obrót
+    characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    characterModel = glm::scale(characterModel, glm::vec3(0.45f));
+
+    //const glm::mat4 characterModel = glm::scale(
+      //  glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -1.0f)),
+        //glm::vec3(0.45f)
+    //);
+
+    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel);
+    
 
     glViewport(0, 0, static_cast<GLsizei>(scene.getFramebufferWidth()), static_cast<GLsizei>(scene.getFramebufferHeight()));
     glClearColor(0.10f, 0.72f, 0.78f, 1.0f);
@@ -86,6 +102,7 @@ void Renderer::render(const Scene& scene)
     renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), scene.getOutlineThickness(), 2.6f, true, scene.isToonShadingEnabled());
     renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), scene.getOutlineThickness(), 2.6f, true, scene.isToonShadingEnabled());
     renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), scene.getOutlineThickness(), 4.4f, true, scene.isToonShadingEnabled());
+    renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), scene.getOutlineThickness(), 4.4f, true, scene.isToonShadingEnabled());
     renderOutlineSlider(scene);
     renderToonToggle(scene);
 }
@@ -99,6 +116,7 @@ void Renderer::shutdown()
     patrickModel_.destroy();
     spongebobModel_.destroy();
     sandModel_.destroy();
+    characterModel_.destroy();
     deleteMesh(sphere_);
     glDeleteProgram(shadowProgram_);
     glDeleteProgram(uiProgram_);
@@ -355,6 +373,7 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
     setInt(toonProgram_, "uShadowMap", 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+    
     assetModel.draw();
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -385,7 +404,7 @@ void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::m
     glUseProgram(0);
 }
 
-void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform) const
+void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform) const
 {
     glViewport(0, 0, kShadowMapSize, kShadowMapSize);
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
@@ -395,6 +414,7 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     renderModelShadowCaster(spongebobModel_, lightSpace, spongebobTransform);
     renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
     renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
+    renderModelShadowCaster(characterModel_, lightSpace, characterTransform);
     glUseProgram(0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

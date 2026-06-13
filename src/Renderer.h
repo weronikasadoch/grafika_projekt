@@ -26,7 +26,7 @@ private:
     void renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness, bool useToonShading) const;
     void renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool receiveShadow, bool useToonShading) const;
     void renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow, bool useToonShading) const;
-    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform) const;
+    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform) const;
     void renderShadowCaster(const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderOutlineSlider(const Scene& scene) const;
@@ -62,5 +62,7 @@ private:
     Model spongebobModel_;
     Model patrickModel_;
     Model squidwardModel_;
+    Model characterModel_;
     Texture spongebobFallbackTexture_;
+    //Texture spongebobTexture_;
 };

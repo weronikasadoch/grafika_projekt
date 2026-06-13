@@ -19,6 +19,9 @@ public:
     glm::vec3 getRight() const;
     glm::vec3 getUp() const;
 
+    void setPosition(const glm::vec3& newPos) { position_ = newPos; }
+    void setOrientation(const glm::quat& newOrientation) { orientation_ = newOrientation; }
+
 private:
     glm::vec3 position_ = glm::vec3(0.0f, 0.0f, 4.0f);
     glm::quat orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);

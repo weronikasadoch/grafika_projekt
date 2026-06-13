@@ -26,32 +26,76 @@ void Scene::processInput(GLFWwindow* window)
     }
 
     const float rotationVelocity = kCameraRotationSpeed * deltaTime_;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        camera_.rotateYaw(rotationVelocity);
+        characterYaw_ += rotationVelocity * 0.03f;
     }
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        camera_.rotateYaw(-rotationVelocity);
+        characterYaw_ -= rotationVelocity * 0.03f;
+
     }
+    glm::vec3 front;
+    front.x = cos(characterYaw_);
+    front.y = 0.0f;
+    front.z = sin(characterYaw_);
+    front = glm::normalize(front);
 
     const float velocity = kCameraSpeed * deltaTime_;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        camera_.moveForward(velocity);
+        characterPosition_ += front * velocity;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        camera_.moveForward(-velocity);
+        characterPosition_ -= front * velocity;
     }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    const float zoomSpeed = 2.0f * deltaTime_;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
-        camera_.moveRight(-velocity);
+        cameraDistance_ = std::max(1.0f, cameraDistance_ - zoomSpeed);
     }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
     {
-        camera_.moveRight(velocity);
+        cameraDistance_ = std::min(6.0f, cameraDistance_ + zoomSpeed);
     }
+
+    const float cameraOrbitSpeed = kCameraRotationSpeed * deltaTime_ * 0.03f;
+    const float cameraVerticalSpeed = 2.0f * deltaTime_;
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        cameraYawOffset_ += cameraOrbitSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        cameraYawOffset_ -= cameraOrbitSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        cameraHeightAbove_ = std::min(3.0f, cameraHeightAbove_ + cameraVerticalSpeed); 
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        cameraHeightAbove_ = std::max(1.0f, cameraHeightAbove_ - cameraVerticalSpeed); 
+    }
+
+    float totalCameraYaw = characterYaw_ + cameraYawOffset_;
+
+    glm::vec3 cameraFrontVec;
+    cameraFrontVec.x = cos(totalCameraYaw);
+    cameraFrontVec.y = 0.0f;
+    cameraFrontVec.z = sin(totalCameraYaw);
+    cameraFrontVec = glm::normalize(cameraFrontVec);
+
+    glm::vec3 cameraPos = characterPosition_ - (cameraFrontVec * cameraDistance_) + glm::vec3(0.0f, cameraHeightAbove_, 0.0f);
+    camera_.setPosition(cameraPos);
+    glm::quat targetOrientation = glm::angleAxis(-totalCameraYaw - glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    float pitchDeg = -4.0f - (cameraHeightAbove_ * 10.0f); 
+    glm::quat pitchAngle = glm::angleAxis(glm::radians(pitchDeg), glm::vec3(1.0f, 0.0f, 0.0f));
+
+    camera_.setOrientation(targetOrientation * pitchAngle);
+    
 }
 
 void Scene::updateDeltaTime(float currentFrameTime)
