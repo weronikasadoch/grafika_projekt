@@ -40,6 +40,8 @@ bool Renderer::initialize()
     const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
     const bool characterLoaded = characterModel_.loadFromObj("assets/models/Spongebob_model/spongebob_model.obj");
+    const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
+    const bool spongebobTextureLoaded = spongebobTexture_.loadPPM("assets/models/Spongebob_model/spongebob.ppm");
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
     createUiResources();
     const bool shadowResourcesCreated = createShadowResources();
@@ -54,6 +56,8 @@ bool Renderer::initialize()
         patrickLoaded &&
         squidwardLoaded &&
         characterLoaded &&
+        jellyfishLoaded &&
+        spongebobTextureLoaded &&
         uiVao_ != 0 &&
         shadowResourcesCreated;
 }
@@ -86,23 +90,32 @@ void Renderer::render(const Scene& scene)
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     characterModel = glm::scale(characterModel, glm::vec3(0.45f));
 
+    const glm::mat4 jellyfishModel = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(1.6f, 0.15f, -1.4f)),
+        glm::vec3(2.0f)
+    );
+
     //const glm::mat4 characterModel = glm::scale(
       //  glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -1.0f)),
         //glm::vec3(0.45f)
     //);
 
-    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel);
+    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel, jellyfishModel);
     
 
     glViewport(0, 0, static_cast<GLsizei>(scene.getFramebufferWidth()), static_cast<GLsizei>(scene.getFramebufferHeight()));
     glClearColor(0.10f, 0.72f, 0.78f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    const float outlineThickness = scene.getOutlineThickness();
+    const float smallModelOutlineThickness = outlineThickness * 0.32f;
+
     renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), 0.0f, 1.65f, true, scene.isToonShadingEnabled());
-    renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), scene.getOutlineThickness(), 2.6f, true, scene.isToonShadingEnabled());
-    renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), scene.getOutlineThickness(), 2.6f, true, scene.isToonShadingEnabled());
-    renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), scene.getOutlineThickness(), 4.4f, true, scene.isToonShadingEnabled());
-    renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), scene.getOutlineThickness(), 4.4f, true, scene.isToonShadingEnabled());
+    renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, true, scene.isToonShadingEnabled());
+    renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, true, scene.isToonShadingEnabled());
+    renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, true, scene.isToonShadingEnabled());
+    renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, true, scene.isToonShadingEnabled(), &spongebobTexture_, false);
+    renderModel(jellyfishModel_, jellyfishModel, view, projection, lightSpace, glm::vec3(1.0f, 0.42f, 0.78f), smallModelOutlineThickness, 1.6f, true, scene.isToonShadingEnabled(), nullptr, false);
     renderOutlineSlider(scene);
     renderToonToggle(scene);
 }
@@ -111,7 +124,9 @@ void Renderer::shutdown()
 {
     deleteUiResources();
     deleteShadowResources();
+    spongebobTexture_.destroy();
     spongebobFallbackTexture_.destroy();
+    jellyfishModel_.destroy();
     squidwardModel_.destroy();
     patrickModel_.destroy();
     spongebobModel_.destroy();
@@ -335,7 +350,7 @@ void Renderer::renderSphere(const glm::mat4& model, const glm::mat4& view, const
     glDisable(GL_CULL_FACE);
 }
 
-void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool receiveShadow, bool useToonShading) const
+void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool receiveShadow, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor) const
 {
     if (!assetModel.isLoaded())
     {
@@ -367,14 +382,25 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
     setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.18f, 0.30f, 0.34f));
     setInt(toonProgram_, "uReceiveShadow", receiveShadow ? 1 : 0);
     setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
-    setInt(toonProgram_, "uUseMaterialColor", 1);
-    setInt(toonProgram_, "uUseDiffuseTexture", 0);
+    setInt(toonProgram_, "uUseMaterialColor", useMaterialColor ? 1 : 0);
+    setInt(toonProgram_, "uUseDiffuseTexture", diffuseTexture != nullptr ? 1 : 0);
     setFloat(toonProgram_, "uMaterialBrightness", materialBrightness);
     setInt(toonProgram_, "uShadowMap", 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+    if (diffuseTexture != nullptr)
+    {
+        setInt(toonProgram_, "uDiffuseTexture", 1);
+        diffuseTexture->bind(GL_TEXTURE1);
+    }
     
     assetModel.draw();
+    if (diffuseTexture != nullptr)
+    {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glUseProgram(0);
@@ -404,7 +430,7 @@ void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::m
     glUseProgram(0);
 }
 
-void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform) const
+void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const glm::mat4& jellyfishTransform) const
 {
     glViewport(0, 0, kShadowMapSize, kShadowMapSize);
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
@@ -415,6 +441,7 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
     renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
     renderModelShadowCaster(characterModel_, lightSpace, characterTransform);
+    renderModelShadowCaster(jellyfishModel_, lightSpace, jellyfishTransform);
     glUseProgram(0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
