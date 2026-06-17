@@ -1,0 +1,12 @@
+# Blender 5.1.2 MTL File: 'spongebob_scene.blend'
+# www.blender.org
+
+newmtl Redd
+Ns 7.957452
+Ka 0.238068 0.238068 0.238068
+Kd 0.558816 0.044964 0.193492
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
