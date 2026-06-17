@@ -33,6 +33,7 @@ public:
     float getJellyfishAnimationTime(int index) const;
     bool isToonShadingEnabled() const;
     bool isMenuOpen() const;
+    float getSandHeight(float x, float z) const;
 
     glm::vec3 getCharacterPosition() const { return characterPosition_; }
     float getCharacterYaw() const { return characterYaw_; }
@@ -43,8 +44,7 @@ private:
 
     void updateCamera();
     glm::vec3 applyCharacterPhysics(const glm::vec3& candidatePosition) const;
-    bool collidesWithHouse(const glm::vec3& position) const;
-    float getSandHeight(float x, float z) const;
+    glm::vec3 resolveHouseCollisions(const glm::vec3& position) const;
     void loadSandCollisionMesh(const char* path);
 
     struct SandTriangle

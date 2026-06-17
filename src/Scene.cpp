@@ -151,6 +151,8 @@ void Scene::renderUi(GLFWwindow* window)
 
     ImGui::Separator();
     ImGui::Checkbox("Toon shading", &toonShadingEnabled_);
+    ImGui::Text("Current shading: %s", toonShadingEnabled_ ? "Toon" : "PBR");
+    ImGui::TextUnformatted("Corals: PBR");
     ImGui::SliderFloat("Outline", &outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness, "%.3f");
     outlineThickness_ = std::clamp(outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness);
     ImGui::SliderInt("Jellyfish", &jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
@@ -253,42 +255,72 @@ glm::vec3 Scene::applyCharacterPhysics(const glm::vec3& candidatePosition) const
     resolved.z = std::clamp(resolved.z, -sandHalfExtent, sandHalfExtent);
     resolved.y = getSandHeight(resolved.x, resolved.z);
 
-    if (collidesWithHouse(resolved))
-    {
-        resolved = characterPosition_;
-        resolved.y = getSandHeight(resolved.x, resolved.z);
-    }
+    resolved = resolveHouseCollisions(resolved);
+    resolved.y = getSandHeight(resolved.x, resolved.z);
 
     return resolved;
 }
 
-bool Scene::collidesWithHouse(const glm::vec3& position) const
+glm::vec3 Scene::resolveHouseCollisions(const glm::vec3& position) const
 {
-    struct CollisionCircle
+    struct CollisionBox
     {
-        glm::vec2 center;
-        float radius;
+        glm::vec2 minBounds;
+        glm::vec2 maxBounds;
     };
 
-    static constexpr CollisionCircle houseColliders[] = {
-        {glm::vec2(0.0f, -3.0f), 1.15f},
-        {glm::vec2(-3.0f, -2.6f), 1.05f},
-        {glm::vec2(3.0f, -2.6f), 1.10f}
+    static constexpr CollisionBox houseColliders[] = {
+        {glm::vec2(-0.69f, -4.02f), glm::vec2( 0.67f, -2.63f)},
+        {glm::vec2(-3.80f, -3.34f), glm::vec2(-2.18f, -1.85f)},
+        {glm::vec2( 2.22f, -3.72f), glm::vec2( 3.59f, -2.44f)}
     };
-    constexpr float characterRadius = 0.28f;
+    constexpr float characterRadius = 0.18f;
 
-    const glm::vec2 characterPosition(position.x, position.z);
-    for (const CollisionCircle& collider : houseColliders)
+    glm::vec2 resolved(position.x, position.z);
+    for (const CollisionBox& collider : houseColliders)
     {
-        const float blockedDistance = collider.radius + characterRadius;
-        const glm::vec2 offset = characterPosition - collider.center;
-        if (glm::dot(offset, offset) < blockedDistance * blockedDistance)
+        const glm::vec2 closestPoint(
+            std::clamp(resolved.x, collider.minBounds.x, collider.maxBounds.x),
+            std::clamp(resolved.y, collider.minBounds.y, collider.maxBounds.y)
+        );
+        glm::vec2 offset = resolved - closestPoint;
+        float distanceSquared = glm::dot(offset, offset);
+
+        if (distanceSquared > 0.0001f)
         {
-            return true;
+            if (distanceSquared < characterRadius * characterRadius)
+            {
+                const float distance = std::sqrt(distanceSquared);
+                resolved = closestPoint + offset / distance * characterRadius;
+            }
+            continue;
+        }
+
+        const float pushLeft = std::abs(resolved.x - collider.minBounds.x);
+        const float pushRight = std::abs(collider.maxBounds.x - resolved.x);
+        const float pushBack = std::abs(resolved.y - collider.minBounds.y);
+        const float pushFront = std::abs(collider.maxBounds.y - resolved.y);
+        const float minPush = std::min({pushLeft, pushRight, pushBack, pushFront});
+
+        if (minPush == pushLeft)
+        {
+            resolved.x = collider.minBounds.x - characterRadius;
+        }
+        else if (minPush == pushRight)
+        {
+            resolved.x = collider.maxBounds.x + characterRadius;
+        }
+        else if (minPush == pushBack)
+        {
+            resolved.y = collider.minBounds.y - characterRadius;
+        }
+        else
+        {
+            resolved.y = collider.maxBounds.y + characterRadius;
         }
     }
 
-    return false;
+    return glm::vec3(resolved.x, position.y, resolved.y);
 }
 
 float Scene::getSandHeight(float x, float z) const

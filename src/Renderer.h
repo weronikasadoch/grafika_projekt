@@ -5,6 +5,8 @@
 
 #include "Model.h"
 
+#include <array>
+
 class Scene;
 
 class Renderer
@@ -15,33 +17,18 @@ public:
     void shutdown();
 
 private:
-    struct Mesh
-    {
-        GLuint vao = 0;
-        GLuint vbo = 0;
-        GLuint ebo = 0;
-        GLsizei indexCount = 0;
-    };
-
-    void renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness, bool useToonShading) const;
     void renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool receiveShadow, bool useToonShading, const Texture* diffuseTexture = nullptr, bool useMaterialColor = true, bool useEmission = false, const glm::vec3& ambientColor = glm::vec3(0.18f, 0.30f, 0.34f), float metallic = 0.0f, float roughness = 0.75f, bool useFastPbr = false) const;
-    void renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow, bool useToonShading) const;
     void renderSkybox(const glm::mat4& view, const glm::mat4& projection) const;
     void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const Scene& scene, int jellyfishCount) const;
     void renderPointShadowMap(const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const Scene& scene, int jellyfishCount) const;
-    void renderShadowCaster(const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderPointShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
-    Mesh createSphereMesh(float radius, int sectors, int stacks) const;
-    Mesh createSandMesh(float size) const;
     bool createSkyboxResources();
     bool createUnderwaterCubemap();
     bool createShadowResources();
-    void deleteMesh(const Mesh& mesh) const;
     void deleteSkyboxResources();
     void deleteShadowResources();
-    void drawSphere() const;
-    void drawMesh(const Mesh& mesh) const;
+    glm::mat4 createCoralTransform(int index, const Scene& scene) const;
     glm::mat4 createJellyfishTransform(int index, float elapsedTime) const;
     glm::mat4 createLightSpaceMatrix() const;
     void setMat4(GLuint program, const char* name, const glm::mat4& value) const;
@@ -66,13 +53,13 @@ private:
     GLuint skyboxVao_ = 0;
     GLuint skyboxVbo_ = 0;
     GLuint skyboxCubemap_ = 0;
-    Mesh sphere_;
     Model sandModel_;
     Model spongebobModel_;
     Model patrickModel_;
     Model squidwardModel_;
     Model characterModel_;
     Model jellyfishModel_;
+    std::array<Model, 10> coralModels_;
     Texture spongebobFallbackTexture_;
     Texture spongebobTexture_;
 };

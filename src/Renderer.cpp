@@ -23,10 +23,72 @@ namespace
     constexpr int kShadowMapSize = 2048;
     constexpr int kPointShadowMapSize = 512;
     constexpr int kJellyfishCount = 10;
+    constexpr int kCoralModelCount = 10;
+    constexpr int kCoralPlacementCount = 32;
+    constexpr int kVisibleCoralInstanceCount = 1;
+    constexpr int kCoralShadowCasterCount = kVisibleCoralInstanceCount;
     constexpr int kLightJellyfishIndex = 2;
     constexpr float kPointLightNearPlane = 0.05f;
     constexpr float kPointLightFarPlane = 8.0f;
     const glm::vec3 kLightDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
+
+    struct DecorationPlacement
+    {
+        int modelIndex = 0;
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+        float yawDegrees = 0.0f;
+        float scale = 1.0f;
+    };
+
+    constexpr DecorationPlacement kCoralPlacements[kCoralPlacementCount] = {
+        {6, -7.0f, -0.88f,  5.8f,  18.0f, 1.0f},
+        {6, -6.4f, -0.88f,  5.4f, -28.0f, 1.0f},
+        {7, -5.7f, -0.90f,  5.9f,  52.0f, 1.0f},
+        {8, -6.9f, -0.88f,  6.6f,  95.0f, 1.0f},
+        {9, -6.1f, -0.88f,  6.5f, -70.0f, 1.0f},
+        {5, -5.3f, -0.90f,  6.4f,  34.0f, 1.0f},
+        {6, -7.4f, -0.88f,  6.2f, 142.0f, 1.0f},
+        {7, -6.7f, -0.88f,  7.1f, -18.0f, 1.0f},
+        {8, -5.9f, -0.88f,  7.2f,  63.0f, 1.0f},
+        {9, -5.1f, -0.88f,  7.0f, -92.0f, 1.0f},
+        {5, -7.8f, -0.88f,  7.0f, 126.0f, 0.24f},
+        {6, -7.2f, -0.88f,  7.7f, -38.0f, 0.36f},
+        {7, -6.3f, -0.89f,  7.8f,  76.0f, 0.31f},
+        {8, -5.4f, -0.88f,  7.8f, -120.0f, 0.38f},
+        {9, -4.7f, -0.88f,  7.5f,  22.0f, 0.20f},
+        {5, -8.1f, -0.90f,  6.2f,  48.0f, 0.24f},
+        {6, -7.6f, -0.88f,  5.3f, -82.0f, 0.36f},
+        {7, -6.8f, -0.88f,  4.8f, 114.0f, 0.31f},
+        {8, -5.8f, -0.88f,  4.9f, -12.0f, 0.38f},
+        {9, -5.0f, -0.88f,  5.4f, 154.0f, 0.20f},
+        {0, -8.9f, -0.88f,  0.7f, -55.0f, 0.18f},
+        {1, -6.9f, -0.88f,  8.1f,  86.0f, 0.20f},
+        {2, -3.5f, -0.90f,  2.2f, -144.0f, 0.16f},
+        {3, -1.4f, -0.88f,  2.9f,  31.0f, 0.18f},
+        {4,  1.9f, -0.88f,  2.2f, -37.0f, 0.19f},
+        {5,  6.2f, -0.90f, -3.6f,  71.0f, 0.22f},
+        {6,  7.1f, -0.88f, -0.2f, -101.0f, 0.34f},
+        {7, -1.4f, -0.88f, -8.8f,  12.0f, 0.30f},
+        {8,  0.4f, -0.88f,  0.8f, 168.0f, 0.36f},
+        {9, -6.4f, -0.88f, -5.7f, -78.0f, 0.18f},
+        {3,  8.9f, -0.88f,  8.2f,  42.0f, 0.19f},
+        {4, -9.3f, -0.88f, -8.5f, -24.0f, 0.20f}
+    };
+
+    constexpr float kCoralModelMinY[kCoralModelCount] = {
+        -0.194700f,
+        -0.211738f,
+        -0.331710f,
+        -0.609442f,
+        -0.609442f,
+        -0.028204f,
+        -0.042306f,
+        -0.025383f,
+        -0.014655f,
+        -0.009475f
+    };
 
     struct EdgeKey
     {
@@ -214,13 +276,29 @@ bool Renderer::initialize()
     skyboxProgram_ = shaderLoader.CreateProgram(skyboxVertexShaderPath, skyboxFragmentShaderPath);
     shadowProgram_ = shaderLoader.CreateProgram(shadowVertexShaderPath, shadowFragmentShaderPath);
     pointShadowProgram_ = shaderLoader.CreateProgram(pointShadowVertexShaderPath, pointShadowFragmentShaderPath);
-    sphere_ = createSphereMesh(1.0f, 48, 24);
     const bool sandLoaded = sandModel_.loadFromObj("assets/models/scene/sand.obj");
     const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house_1.obj");
     const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
     const bool characterLoaded = characterModel_.loadFromObj("assets/models/Spongebob_model/spongebob_model.obj");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
+    const char* coralModelPaths[kCoralModelCount] = {
+        "assets/models/coral_rock/coral_1.obj",
+        "assets/models/coral_rock/coral_2.obj",
+        "assets/models/coral_rock/coral_3.obj",
+        "assets/models/coral_rock/coral_4.obj",
+        "assets/models/coral_rock/coral_5.obj",
+        "assets/models/coral_rock/coral_6.obj",
+        "assets/models/coral_rock/coral_7.obj",
+        "assets/models/coral_rock/coral_8.obj",
+        "assets/models/coral_rock/coral_9.obj",
+        "assets/models/coral_rock/coral_10.obj"
+    };
+    bool coralsLoaded = true;
+    for (int i = 0; i < kCoralModelCount; ++i)
+    {
+        coralsLoaded = coralModels_[static_cast<std::size_t>(i)].loadFromObj(coralModelPaths[i]) && coralsLoaded;
+    }
     const bool spongebobTextureLoaded = spongebobTexture_.loadPPM("assets/models/Spongebob_model/spongebob.ppm");
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
     const bool skyboxResourcesCreated = createSkyboxResources();
@@ -232,13 +310,13 @@ bool Renderer::initialize()
         skyboxProgram_ != 0 &&
         shadowProgram_ != 0 &&
         pointShadowProgram_ != 0 &&
-        sphere_.vao != 0 &&
         sandLoaded &&
         spongebobLoaded &&
         patrickLoaded &&
         squidwardLoaded &&
         characterLoaded &&
         jellyfishLoaded &&
+        coralsLoaded &&
         spongebobTextureLoaded &&
         skyboxResourcesCreated &&
         shadowResourcesCreated;
@@ -300,6 +378,11 @@ void Renderer::render(const Scene& scene)
     const float smallModelOutlineThickness = outlineThickness * 0.32f;
 
     renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), 0.0f, 0.92f, true, false, nullptr, true, false, glm::vec3(0.04f, 0.12f, 0.13f), 0.0f, 0.96f, true);
+    for (int i = 0; i < kVisibleCoralInstanceCount; ++i)
+    {
+        const int modelIndex = kCoralPlacements[i].modelIndex;
+        renderModel(coralModels_[static_cast<std::size_t>(modelIndex)], createCoralTransform(i, scene), view, projection, lightSpace, glm::vec3(0.95f, 0.25f, 0.48f), 0.0f, 1.45f, true, false, nullptr, true, false, glm::vec3(0.16f, 0.28f, 0.31f), 0.0f, 0.72f);
+    }
     renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, true, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f);
     renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, true, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f);
     renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, true, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
@@ -319,137 +402,27 @@ void Renderer::shutdown()
     spongebobTexture_.destroy();
     spongebobFallbackTexture_.destroy();
     jellyfishModel_.destroy();
+    for (Model& coralModel : coralModels_)
+    {
+        coralModel.destroy();
+    }
     squidwardModel_.destroy();
     patrickModel_.destroy();
     spongebobModel_.destroy();
     sandModel_.destroy();
     characterModel_.destroy();
-    deleteMesh(sphere_);
     glDeleteProgram(shadowProgram_);
     glDeleteProgram(pointShadowProgram_);
     glDeleteProgram(skyboxProgram_);
     glDeleteProgram(outlineProgram_);
     glDeleteProgram(pbrProgram_);
     glDeleteProgram(toonProgram_);
-    sphere_ = {};
     shadowProgram_ = 0;
     pointShadowProgram_ = 0;
     skyboxProgram_ = 0;
     outlineProgram_ = 0;
     pbrProgram_ = 0;
     toonProgram_ = 0;
-}
-
-Renderer::Mesh Renderer::createSphereMesh(float radius, int sectors, int stacks) const
-{
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
-
-    for (int stack = 0; stack <= stacks; ++stack)
-    {
-        const float stackAngle = kPi / 2.0f - static_cast<float>(stack) * kPi / static_cast<float>(stacks);
-        const float xy = radius * std::cos(stackAngle);
-        const float z = radius * std::sin(stackAngle);
-
-        for (int sector = 0; sector <= sectors; ++sector)
-        {
-            const float sectorAngle = static_cast<float>(sector) * 2.0f * kPi / static_cast<float>(sectors);
-            const float x = xy * std::cos(sectorAngle);
-            const float y = xy * std::sin(sectorAngle);
-            const glm::vec3 normal = glm::normalize(glm::vec3(x, y, z));
-
-            vertices.push_back(x);
-            vertices.push_back(y);
-            vertices.push_back(z);
-            vertices.push_back(normal.x);
-            vertices.push_back(normal.y);
-            vertices.push_back(normal.z);
-        }
-    }
-
-    for (int stack = 0; stack < stacks; ++stack)
-    {
-        int current = stack * (sectors + 1);
-        int next = current + sectors + 1;
-
-        for (int sector = 0; sector < sectors; ++sector, ++current, ++next)
-        {
-            if (stack != 0)
-            {
-                indices.push_back(static_cast<unsigned int>(current));
-                indices.push_back(static_cast<unsigned int>(next));
-                indices.push_back(static_cast<unsigned int>(current + 1));
-            }
-
-            if (stack != stacks - 1)
-            {
-                indices.push_back(static_cast<unsigned int>(current + 1));
-                indices.push_back(static_cast<unsigned int>(next));
-                indices.push_back(static_cast<unsigned int>(next + 1));
-            }
-        }
-    }
-
-    Mesh mesh;
-    mesh.indexCount = static_cast<GLsizei>(indices.size());
-
-    glGenVertexArrays(1, &mesh.vao);
-    glGenBuffers(1, &mesh.vbo);
-    glGenBuffers(1, &mesh.ebo);
-
-    glBindVertexArray(mesh.vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(float)), vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(unsigned int)), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), nullptr);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindVertexArray(0);
-    return mesh;
-}
-
-Renderer::Mesh Renderer::createSandMesh(float size) const
-{
-    const float halfSize = size * 0.5f;
-    const float vertices[] = {
-        -halfSize, 0.0f, -halfSize, 0.0f, 1.0f, 0.0f,
-         halfSize, 0.0f, -halfSize, 0.0f, 1.0f, 0.0f,
-         halfSize, 0.0f,  halfSize, 0.0f, 1.0f, 0.0f,
-        -halfSize, 0.0f,  halfSize, 0.0f, 1.0f, 0.0f
-    };
-    const unsigned int indices[] = {
-        0, 1, 2,
-        0, 2, 3
-    };
-
-    Mesh mesh;
-    mesh.indexCount = 6;
-
-    glGenVertexArrays(1, &mesh.vao);
-    glGenBuffers(1, &mesh.vbo);
-    glGenBuffers(1, &mesh.ebo);
-
-    glBindVertexArray(mesh.vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), nullptr);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindVertexArray(0);
-    return mesh;
 }
 
 bool Renderer::createSkyboxResources()
@@ -647,13 +620,6 @@ bool Renderer::createShadowResources()
     return isComplete && pointShadowComplete;
 }
 
-void Renderer::deleteMesh(const Mesh& mesh) const
-{
-    glDeleteBuffers(1, &mesh.ebo);
-    glDeleteBuffers(1, &mesh.vbo);
-    glDeleteVertexArrays(1, &mesh.vao);
-}
-
 void Renderer::deleteSkyboxResources()
 {
     glDeleteTextures(1, &skyboxCubemap_);
@@ -674,50 +640,6 @@ void Renderer::deleteShadowResources()
     pointShadowFbo_ = 0;
     shadowDepthTexture_ = 0;
     shadowFbo_ = 0;
-}
-
-void Renderer::renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness, bool useToonShading) const
-{
-    glEnable(GL_CULL_FACE);
-
-    glCullFace(GL_FRONT);
-    glUseProgram(outlineProgram_);
-    setMat4(outlineProgram_, "uModel", model);
-    setMat4(outlineProgram_, "uView", view);
-    setMat4(outlineProgram_, "uProjection", projection);
-    setFloat(outlineProgram_, "uOutlineThickness", outlineThickness);
-    setVec3(outlineProgram_, "uOutlineColor", glm::vec3(0.0f, 0.04f, 0.22f));
-    drawSphere();
-
-    glCullFace(GL_BACK);
-    glUseProgram(toonProgram_);
-    setMat4(toonProgram_, "uModel", model);
-    setMat4(toonProgram_, "uView", view);
-    setMat4(toonProgram_, "uProjection", projection);
-    setMat4(toonProgram_, "uLightSpaceMatrix", glm::mat4(1.0f));
-    setVec3(toonProgram_, "uBaseColor", baseColor);
-    setVec3(toonProgram_, "uLightDirection", kLightDirection);
-    setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.08f, 0.18f, 0.22f));
-    setInt(toonProgram_, "uReceiveShadow", 0);
-    setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
-    setInt(toonProgram_, "uUseMaterialColor", 0);
-    setInt(toonProgram_, "uUseDiffuseTexture", 0);
-    setFloat(toonProgram_, "uMaterialBrightness", 1.0f);
-    setVec3(toonProgram_, "uPointLightPosition", pointLightPosition_);
-    setVec3(toonProgram_, "uPointLightColor", pointLightColor_);
-    setFloat(toonProgram_, "uPointLightIntensity", pointLightIntensity_);
-    setFloat(toonProgram_, "uPointLightRadius", pointLightRadius_);
-    setFloat(toonProgram_, "uPointLightFarPlane", kPointLightFarPlane);
-    setInt(toonProgram_, "uUseEmission", 0);
-    setInt(toonProgram_, "uPointShadowMap", 2);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowCubemap_);
-    drawSphere();
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    glActiveTexture(GL_TEXTURE0);
-
-    glUseProgram(0);
-    glDisable(GL_CULL_FACE);
 }
 
 void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool receiveShadow, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const
@@ -845,42 +767,6 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
     glDisable(GL_CULL_FACE);
 }
 
-void Renderer::renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow, bool useToonShading) const
-{
-    glUseProgram(toonProgram_);
-    setMat4(toonProgram_, "uModel", model);
-    setMat4(toonProgram_, "uView", view);
-    setMat4(toonProgram_, "uProjection", projection);
-    setMat4(toonProgram_, "uLightSpaceMatrix", lightSpace);
-    setVec3(toonProgram_, "uBaseColor", baseColor);
-    setVec3(toonProgram_, "uLightDirection", kLightDirection);
-    setVec3(toonProgram_, "uAmbientColor", glm::vec3(0.08f, 0.18f, 0.22f));
-    setInt(toonProgram_, "uReceiveShadow", receiveShadow ? 1 : 0);
-    setInt(toonProgram_, "uUseToonShading", useToonShading ? 1 : 0);
-    setInt(toonProgram_, "uUseMaterialColor", 0);
-    setInt(toonProgram_, "uUseDiffuseTexture", 0);
-    setFloat(toonProgram_, "uMaterialBrightness", 1.0f);
-    setVec3(toonProgram_, "uPointLightPosition", pointLightPosition_);
-    setVec3(toonProgram_, "uPointLightColor", pointLightColor_);
-    setFloat(toonProgram_, "uPointLightIntensity", pointLightIntensity_);
-    setFloat(toonProgram_, "uPointLightRadius", pointLightRadius_);
-    setFloat(toonProgram_, "uPointLightFarPlane", kPointLightFarPlane);
-    setInt(toonProgram_, "uUseEmission", 0);
-    setInt(toonProgram_, "uShadowMap", 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
-    setInt(toonProgram_, "uPointShadowMap", 2);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowCubemap_);
-    glActiveTexture(GL_TEXTURE0);
-    drawMesh(mesh);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glUseProgram(0);
-}
-
 void Renderer::renderSkybox(const glm::mat4& view, const glm::mat4& projection) const
 {
     glDepthMask(GL_FALSE);
@@ -914,6 +800,11 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
     renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
     renderModelShadowCaster(characterModel_, lightSpace, characterTransform);
+    for (int i = 0; i < kCoralShadowCasterCount; ++i)
+    {
+        const int modelIndex = kCoralPlacements[i].modelIndex;
+        renderModelShadowCaster(coralModels_[static_cast<std::size_t>(modelIndex)], lightSpace, createCoralTransform(i, scene));
+    }
     for (int i = 0; i < jellyfishCount; ++i)
     {
         renderModelShadowCaster(jellyfishModel_, lightSpace, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)));
@@ -971,13 +862,6 @@ void Renderer::renderPointShadowMap(const glm::mat4& spongebobTransform, const g
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::renderShadowCaster(const glm::mat4& lightSpace, const glm::mat4& model) const
-{
-    setMat4(shadowProgram_, "uLightSpaceMatrix", lightSpace);
-    setMat4(shadowProgram_, "uModel", model);
-    drawSphere();
-}
-
 void Renderer::renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const
 {
     if (!assetModel.isLoaded())
@@ -1002,16 +886,18 @@ void Renderer::renderPointShadowCaster(const Model& assetModel, const glm::mat4&
     assetModel.draw();
 }
 
-void Renderer::drawSphere() const
+glm::mat4 Renderer::createCoralTransform(int index, const Scene& scene) const
 {
-    drawMesh(sphere_);
-}
+    const DecorationPlacement& placement = kCoralPlacements[index % kCoralPlacementCount];
+    const float scale = placement.scale;
+    const float sandY = scene.getSandHeight(placement.x, placement.z);
+    const float y = sandY - kCoralModelMinY[placement.modelIndex] * scale;
 
-void Renderer::drawMesh(const Mesh& mesh) const
-{
-    glBindVertexArray(mesh.vao);
-    glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-    glBindVertexArray(0);
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, glm::vec3(placement.x, y, placement.z));
+    model = glm::rotate(model, glm::radians(placement.yawDegrees), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(scale));
+    return model;
 }
 
 glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
@@ -1053,13 +939,14 @@ glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
 
 glm::mat4 Renderer::createLightSpaceMatrix() const
 {
-    const glm::vec3 lightPosition = -kLightDirection * 6.0f;
+    const glm::vec3 lightTarget(0.0f, -0.4f, 0.0f);
+    const glm::vec3 lightPosition = lightTarget - kLightDirection * 18.0f;
     const glm::mat4 lightView = glm::lookAt(
         lightPosition,
-        glm::vec3(0.0f, -0.4f, 0.0f),
+        lightTarget,
         glm::vec3(0.0f, 1.0f, 0.0f)
     );
-    const glm::mat4 lightProjection = glm::ortho(-5.5f, 5.5f, -5.5f, 5.5f, 0.1f, 14.0f);
+    const glm::mat4 lightProjection = glm::ortho(-16.0f, 16.0f, -16.0f, 16.0f, 0.1f, 36.0f);
     return lightProjection * lightView;
 }
 

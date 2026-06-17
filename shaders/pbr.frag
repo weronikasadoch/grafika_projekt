@@ -37,7 +37,9 @@ float calculateShadow()
 {
     vec3 projectedCoords = vLightSpacePosition.xyz / vLightSpacePosition.w;
     projectedCoords = projectedCoords * 0.5 + 0.5;
-    if (projectedCoords.z > 1.0)
+    if (projectedCoords.x < 0.0 || projectedCoords.x > 1.0 ||
+        projectedCoords.y < 0.0 || projectedCoords.y > 1.0 ||
+        projectedCoords.z > 1.0)
     {
         return 0.0;
     }
