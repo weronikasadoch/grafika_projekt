@@ -3,11 +3,30 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+namespace
+{
+    constexpr float kSandWorldYOffset = -0.95f;
+    constexpr float kFallbackSandHeight = -1.0f;
+
+    int parseObjVertexIndex(const std::string& token)
+    {
+        const size_t slash = token.find('/');
+        const std::string indexText = slash == std::string::npos ? token : token.substr(0, slash);
+        return std::stoi(indexText) - 1;
+    }
+}
 
 Scene::Scene(int width, int height)
     : width_(width),
       height_(height)
 {
+    loadSandCollisionMesh("assets/models/scene/sand.obj");
 }
 
 void Scene::updateFramebufferSize(int width, int height)
@@ -42,14 +61,16 @@ void Scene::processInput(GLFWwindow* window)
     front = glm::normalize(front);
 
     const float velocity = kCameraSpeed * deltaTime_;
+    glm::vec3 candidatePosition = characterPosition_;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        characterPosition_ += front * velocity;
+        candidatePosition += front * velocity;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        characterPosition_ -= front * velocity;
+        candidatePosition -= front * velocity;
     }
+    characterPosition_ = applyCharacterPhysics(candidatePosition);
     const float zoomSpeed = 2.0f * deltaTime_;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
@@ -129,6 +150,11 @@ float Scene::getFramebufferHeight() const
     return static_cast<float>(height_);
 }
 
+float Scene::getElapsedTime() const
+{
+    return lastFrameTime_;
+}
+
 float Scene::getOutlineThickness() const
 {
     return outlineThickness_;
@@ -195,4 +221,143 @@ void Scene::updateUi(GLFWwindow* window)
 void Scene::setOutlineThickness(float thickness)
 {
     outlineThickness_ = std::clamp(thickness, kOutlineMinThickness, kOutlineMaxThickness);
+}
+
+glm::vec3 Scene::applyCharacterPhysics(const glm::vec3& candidatePosition) const
+{
+    glm::vec3 resolved = candidatePosition;
+
+    constexpr float sandHalfExtent = 14.0f;
+    resolved.x = std::clamp(resolved.x, -sandHalfExtent, sandHalfExtent);
+    resolved.z = std::clamp(resolved.z, -sandHalfExtent, sandHalfExtent);
+    resolved.y = getSandHeight(resolved.x, resolved.z);
+
+    if (collidesWithHouse(resolved))
+    {
+        resolved = characterPosition_;
+        resolved.y = getSandHeight(resolved.x, resolved.z);
+    }
+
+    return resolved;
+}
+
+bool Scene::collidesWithHouse(const glm::vec3& position) const
+{
+    struct CollisionCircle
+    {
+        glm::vec2 center;
+        float radius;
+    };
+
+    static constexpr CollisionCircle houseColliders[] = {
+        {glm::vec2(0.0f, -3.0f), 1.15f},
+        {glm::vec2(-3.0f, -2.6f), 1.05f},
+        {glm::vec2(3.0f, -2.6f), 1.10f}
+    };
+    constexpr float characterRadius = 0.28f;
+
+    const glm::vec2 characterPosition(position.x, position.z);
+    for (const CollisionCircle& collider : houseColliders)
+    {
+        const float blockedDistance = collider.radius + characterRadius;
+        const glm::vec2 offset = characterPosition - collider.center;
+        if (glm::dot(offset, offset) < blockedDistance * blockedDistance)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+float Scene::getSandHeight(float x, float z) const
+{
+    constexpr float epsilon = 0.0001f;
+    const glm::vec2 point(x, z);
+
+    for (const SandTriangle& triangle : sandTriangles_)
+    {
+        const glm::vec2 a(triangle.a.x, triangle.a.z);
+        const glm::vec2 b(triangle.b.x, triangle.b.z);
+        const glm::vec2 c(triangle.c.x, triangle.c.z);
+
+        const float minX = std::min({a.x, b.x, c.x}) - epsilon;
+        const float maxX = std::max({a.x, b.x, c.x}) + epsilon;
+        const float minZ = std::min({a.y, b.y, c.y}) - epsilon;
+        const float maxZ = std::max({a.y, b.y, c.y}) + epsilon;
+        if (point.x < minX || point.x > maxX || point.y < minZ || point.y > maxZ)
+        {
+            continue;
+        }
+
+        const glm::vec2 v0 = b - a;
+        const glm::vec2 v1 = c - a;
+        const glm::vec2 v2 = point - a;
+        const float denominator = v0.x * v1.y - v1.x * v0.y;
+        if (std::abs(denominator) < epsilon)
+        {
+            continue;
+        }
+
+        const float u = (v2.x * v1.y - v1.x * v2.y) / denominator;
+        const float v = (v0.x * v2.y - v2.x * v0.y) / denominator;
+        if (u >= -epsilon && v >= -epsilon && u + v <= 1.0f + epsilon)
+        {
+            return triangle.a.y + u * (triangle.b.y - triangle.a.y) + v * (triangle.c.y - triangle.a.y) + kSandWorldYOffset;
+        }
+    }
+
+    return kFallbackSandHeight;
+}
+
+void Scene::loadSandCollisionMesh(const char* path)
+{
+    std::ifstream file(path);
+    if (!file)
+    {
+        return;
+    }
+
+    std::vector<glm::vec3> vertices;
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::stringstream stream(line);
+        std::string command;
+        stream >> command;
+
+        if (command == "v")
+        {
+            glm::vec3 vertex(0.0f);
+            stream >> vertex.x >> vertex.y >> vertex.z;
+            vertices.push_back(vertex);
+        }
+        else if (command == "f")
+        {
+            std::vector<int> face;
+            std::string token;
+            while (stream >> token)
+            {
+                face.push_back(parseObjVertexIndex(token));
+            }
+
+            for (size_t i = 1; i + 1 < face.size(); ++i)
+            {
+                const int indices[] = {face[0], face[i], face[i + 1]};
+                if (indices[0] < 0 || indices[1] < 0 || indices[2] < 0 ||
+                    static_cast<size_t>(indices[0]) >= vertices.size() ||
+                    static_cast<size_t>(indices[1]) >= vertices.size() ||
+                    static_cast<size_t>(indices[2]) >= vertices.size())
+                {
+                    continue;
+                }
+
+                sandTriangles_.push_back({
+                    vertices[static_cast<size_t>(indices[0])],
+                    vertices[static_cast<size_t>(indices[1])],
+                    vertices[static_cast<size_t>(indices[2])]
+                });
+            }
+        }
+    }
 }

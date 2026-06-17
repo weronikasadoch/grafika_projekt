@@ -10,20 +10,22 @@ uniform mat4 uView;
 uniform mat4 uProjection;
 uniform mat4 uLightSpaceMatrix;
 
-out vec3 vWorldNormal;
 out vec3 vWorldPosition;
+out vec3 vWorldNormal;
 out vec4 vLightSpacePosition;
 out vec2 vTexCoord;
 out vec3 vMaterialColor;
 
 void main()
 {
-    mat3 normalMatrix = transpose(inverse(mat3(uModel)));
-    vWorldNormal = normalize(normalMatrix * aNormal);
     vec4 worldPosition = uModel * vec4(aPosition, 1.0);
+    mat3 normalMatrix = transpose(inverse(mat3(uModel)));
+
     vWorldPosition = worldPosition.xyz;
+    vWorldNormal = normalize(normalMatrix * aNormal);
     vLightSpacePosition = uLightSpaceMatrix * worldPosition;
     vTexCoord = aTexCoord;
     vMaterialColor = aMaterialColor;
+
     gl_Position = uProjection * uView * worldPosition;
 }

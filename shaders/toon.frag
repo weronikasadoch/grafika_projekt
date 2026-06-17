@@ -1,6 +1,7 @@
 #version 330 core
 
 in vec3 vWorldNormal;
+in vec3 vWorldPosition;
 in vec4 vLightSpacePosition;
 in vec2 vTexCoord;
 in vec3 vMaterialColor;
@@ -10,11 +11,18 @@ uniform vec3 uLightDirection;
 uniform vec3 uAmbientColor;
 uniform sampler2D uShadowMap;
 uniform sampler2D uDiffuseTexture;
+uniform samplerCube uPointShadowMap;
 uniform int uReceiveShadow;
 uniform int uUseToonShading;
 uniform int uUseMaterialColor;
 uniform int uUseDiffuseTexture;
 uniform float uMaterialBrightness;
+uniform vec3 uPointLightPosition;
+uniform vec3 uPointLightColor;
+uniform float uPointLightIntensity;
+uniform float uPointLightRadius;
+uniform float uPointLightFarPlane;
+uniform int uUseEmission;
 
 out vec4 fragColor;
 
@@ -43,6 +51,19 @@ float calculateShadow()
     }
 
     return shadow / 9.0;
+}
+
+float calculatePointShadow(vec3 pointVector)
+{
+    float currentDepth = length(pointVector);
+    if (currentDepth > uPointLightFarPlane)
+    {
+        return 0.0;
+    }
+
+    float closestDepth = texture(uPointShadowMap, pointVector).r * uPointLightFarPlane;
+    float bias = 0.04;
+    return currentDepth - bias > closestDepth ? 1.0 : 0.0;
 }
 
 void main()
@@ -74,6 +95,22 @@ void main()
 
     vec3 litColor = surfaceColor * shade;
     litColor *= mix(1.0, 0.45, shadow);
+
+    vec3 pointVector = uPointLightPosition - vWorldPosition;
+    float pointDistance = length(pointVector);
+    vec3 pointDirection = pointDistance > 0.001 ? pointVector / pointDistance : normal;
+    float pointNdotL = max(dot(normal, pointDirection), 0.0);
+    float pointAttenuation = clamp(1.0 - pointDistance / uPointLightRadius, 0.0, 1.0);
+    pointAttenuation *= pointAttenuation;
+    float pointShadow = calculatePointShadow(vWorldPosition - uPointLightPosition);
+    float pointVisibility = 1.0 - pointShadow;
+    litColor += surfaceColor * uPointLightColor * pointNdotL * pointAttenuation * uPointLightIntensity * pointVisibility;
+    litColor += uPointLightColor * pointAttenuation * 0.06 * pointVisibility;
+
+    if (uUseEmission == 1)
+    {
+        litColor += uPointLightColor * 1.4;
+    }
 
     vec3 color = clamp(litColor + uAmbientColor, 0.0, 1.0);
     fragColor = vec4(color, 1.0);

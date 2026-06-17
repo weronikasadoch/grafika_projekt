@@ -2,6 +2,8 @@
 
 #include "Camera.h"
 
+#include <vector>
+
 struct GLFWwindow;
 
 class Scene
@@ -29,6 +31,7 @@ public:
     float getAspectRatio() const;
     float getFramebufferWidth() const;
     float getFramebufferHeight() const;
+    float getElapsedTime() const;
     float getOutlineThickness() const;
     float getOutlineSliderValue() const;
     bool isToonShadingEnabled() const;
@@ -42,8 +45,20 @@ private:
 
     void updateUi(GLFWwindow* window);
     void setOutlineThickness(float thickness);
+    glm::vec3 applyCharacterPhysics(const glm::vec3& candidatePosition) const;
+    bool collidesWithHouse(const glm::vec3& position) const;
+    float getSandHeight(float x, float z) const;
+    void loadSandCollisionMesh(const char* path);
+
+    struct SandTriangle
+    {
+        glm::vec3 a;
+        glm::vec3 b;
+        glm::vec3 c;
+    };
 
     Camera camera_;
+    std::vector<SandTriangle> sandTriangles_;
     int width_;
     int height_;
     float lastFrameTime_ = 0.0f;
