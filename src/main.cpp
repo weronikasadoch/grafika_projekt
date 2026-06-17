@@ -1,5 +1,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 #include "Renderer.h"
 #include "Scene.h"
@@ -88,18 +91,35 @@ int main()
         return -1;
     }
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330 core");
+
     scene.updateDeltaTime(static_cast<float>(glfwGetTime()));
 
     while (!glfwWindowShouldClose(window))
     {
         scene.updateDeltaTime(static_cast<float>(glfwGetTime()));
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
         scene.processInput(window);
         renderer.render(scene);
+        scene.renderUi(window);
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     renderer.shutdown();
     glfwDestroyWindow(window);
     glfwTerminate();

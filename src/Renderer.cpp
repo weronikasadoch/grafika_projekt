@@ -10,6 +10,11 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <fstream>
+#include <limits>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace
@@ -22,6 +27,168 @@ namespace
     constexpr float kPointLightNearPlane = 0.05f;
     constexpr float kPointLightFarPlane = 8.0f;
     const glm::vec3 kLightDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
+
+    struct EdgeKey
+    {
+        int first = 0;
+        int second = 0;
+
+        bool operator==(const EdgeKey& other) const
+        {
+            return first == other.first && second == other.second;
+        }
+    };
+
+    struct EdgeKeyHash
+    {
+        std::size_t operator()(const EdgeKey& edge) const
+        {
+            return (static_cast<std::size_t>(edge.first) << 32u) ^ static_cast<std::size_t>(edge.second);
+        }
+    };
+
+    int parseObjVertexIndex(const std::string& token)
+    {
+        const std::size_t slash = token.find('/');
+        const std::string indexText = slash == std::string::npos ? token : token.substr(0, slash);
+        return std::stoi(indexText) - 1;
+    }
+
+    void addEdge(std::unordered_map<EdgeKey, int, EdgeKeyHash>& edges, int a, int b)
+    {
+        if (a == b)
+        {
+            return;
+        }
+
+        EdgeKey edge{std::min(a, b), std::max(a, b)};
+        ++edges[edge];
+    }
+
+    void drawMaskLine(std::vector<float>& mask, int size, int x0, int y0, int x1, int y1)
+    {
+        const int dx = std::abs(x1 - x0);
+        const int sx = x0 < x1 ? 1 : -1;
+        const int dy = -std::abs(y1 - y0);
+        const int sy = y0 < y1 ? 1 : -1;
+        int error = dx + dy;
+
+        while (true)
+        {
+            for (int oy = -2; oy <= 2; ++oy)
+            {
+                for (int ox = -2; ox <= 2; ++ox)
+                {
+                    const int px = x0 + ox;
+                    const int py = y0 + oy;
+                    if (px >= 0 && px < size && py >= 0 && py < size)
+                    {
+                        const float distance = std::sqrt(static_cast<float>(ox * ox + oy * oy));
+                        const float coverage = glm::clamp(1.0f - distance / 2.6f, 0.0f, 1.0f);
+                        float& pixel = mask[static_cast<std::size_t>(py * size + px)];
+                        pixel = std::max(pixel, coverage);
+                    }
+                }
+            }
+
+            if (x0 == x1 && y0 == y1)
+            {
+                break;
+            }
+
+            const int doubledError = error * 2;
+            if (doubledError >= dy)
+            {
+                error += dy;
+                x0 += sx;
+            }
+            if (doubledError <= dx)
+            {
+                error += dx;
+                y0 += sy;
+            }
+        }
+    }
+
+    std::vector<float> createFlowerMask(const char* path, int size)
+    {
+        std::ifstream file(path);
+        std::vector<float> mask(static_cast<std::size_t>(size * size), 0.0f);
+        if (!file.is_open())
+        {
+            return mask;
+        }
+
+        std::vector<glm::vec2> positions;
+        std::unordered_map<EdgeKey, int, EdgeKeyHash> edgeUseCounts;
+        glm::vec2 minBounds(std::numeric_limits<float>::max());
+        glm::vec2 maxBounds(std::numeric_limits<float>::lowest());
+        std::string line;
+
+        while (std::getline(file, line))
+        {
+            std::istringstream stream(line);
+            std::string prefix;
+            stream >> prefix;
+
+            if (prefix == "v")
+            {
+                glm::vec3 position(0.0f);
+                stream >> position.x >> position.y >> position.z;
+                positions.emplace_back(position.x, position.y);
+                minBounds = glm::min(minBounds, positions.back());
+                maxBounds = glm::max(maxBounds, positions.back());
+            }
+            else if (prefix == "f")
+            {
+                std::vector<int> indices;
+                std::string token;
+                while (stream >> token)
+                {
+                    indices.push_back(parseObjVertexIndex(token));
+                }
+
+                for (std::size_t i = 0; i < indices.size(); ++i)
+                {
+                    addEdge(edgeUseCounts, indices[i], indices[(i + 1) % indices.size()]);
+                }
+            }
+        }
+
+        const glm::vec2 boundsSize = maxBounds - minBounds;
+        if (positions.empty() || boundsSize.x <= 0.0f || boundsSize.y <= 0.0f)
+        {
+            return mask;
+        }
+
+        const float padding = static_cast<float>(size) * 0.06f;
+        const float scale = std::min(
+            (static_cast<float>(size) - padding * 2.0f) / boundsSize.x,
+            (static_cast<float>(size) - padding * 2.0f) / boundsSize.y
+        );
+        const glm::vec2 offset(
+            (static_cast<float>(size) - boundsSize.x * scale) * 0.5f,
+            (static_cast<float>(size) - boundsSize.y * scale) * 0.5f
+        );
+
+        for (const auto& edgeEntry : edgeUseCounts)
+        {
+            if (edgeEntry.second != 1)
+            {
+                continue;
+            }
+
+            const glm::vec2 a = positions[static_cast<std::size_t>(edgeEntry.first.first)];
+            const glm::vec2 b = positions[static_cast<std::size_t>(edgeEntry.first.second)];
+            const int x0 = static_cast<int>((a.x - minBounds.x) * scale + offset.x);
+            const int y0 = static_cast<int>(static_cast<float>(size) - ((a.y - minBounds.y) * scale + offset.y));
+            const int x1 = static_cast<int>((b.x - minBounds.x) * scale + offset.x);
+            const int y1 = static_cast<int>(static_cast<float>(size) - ((b.y - minBounds.y) * scale + offset.y));
+            drawMaskLine(mask, size, x0, y0, x1, y1);
+        }
+
+        return mask;
+    }
 }
 
 bool Renderer::initialize()
@@ -35,8 +202,6 @@ bool Renderer::initialize()
     char pbrFragmentShaderPath[] = "shaders/pbr.frag";
     char outlineVertexShaderPath[] = "shaders/outline.vert";
     char outlineFragmentShaderPath[] = "shaders/outline.frag";
-    char uiVertexShaderPath[] = "shaders/ui.vert";
-    char uiFragmentShaderPath[] = "shaders/ui.frag";
     char skyboxVertexShaderPath[] = "shaders/skybox.vert";
     char skyboxFragmentShaderPath[] = "shaders/skybox.frag";
     char shadowVertexShaderPath[] = "shaders/shadow_depth.vert";
@@ -46,7 +211,6 @@ bool Renderer::initialize()
     toonProgram_ = shaderLoader.CreateProgram(toonVertexShaderPath, toonFragmentShaderPath);
     pbrProgram_ = shaderLoader.CreateProgram(pbrVertexShaderPath, pbrFragmentShaderPath);
     outlineProgram_ = shaderLoader.CreateProgram(outlineVertexShaderPath, outlineFragmentShaderPath);
-    uiProgram_ = shaderLoader.CreateProgram(uiVertexShaderPath, uiFragmentShaderPath);
     skyboxProgram_ = shaderLoader.CreateProgram(skyboxVertexShaderPath, skyboxFragmentShaderPath);
     shadowProgram_ = shaderLoader.CreateProgram(shadowVertexShaderPath, shadowFragmentShaderPath);
     pointShadowProgram_ = shaderLoader.CreateProgram(pointShadowVertexShaderPath, pointShadowFragmentShaderPath);
@@ -59,14 +223,12 @@ bool Renderer::initialize()
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
     const bool spongebobTextureLoaded = spongebobTexture_.loadPPM("assets/models/Spongebob_model/spongebob.ppm");
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
-    createUiResources();
     const bool skyboxResourcesCreated = createSkyboxResources();
     const bool shadowResourcesCreated = createShadowResources();
 
     return toonProgram_ != 0 &&
         pbrProgram_ != 0 &&
         outlineProgram_ != 0 &&
-        uiProgram_ != 0 &&
         skyboxProgram_ != 0 &&
         shadowProgram_ != 0 &&
         pointShadowProgram_ != 0 &&
@@ -78,7 +240,6 @@ bool Renderer::initialize()
         characterLoaded &&
         jellyfishLoaded &&
         spongebobTextureLoaded &&
-        uiVao_ != 0 &&
         skyboxResourcesCreated &&
         shadowResourcesCreated;
 }
@@ -88,7 +249,7 @@ void Renderer::render(const Scene& scene)
     const glm::mat4 view = scene.getCamera().getViewMatrix();
     const glm::mat4 projection = scene.getCamera().getProjectionMatrix(scene.getAspectRatio());
     const glm::mat4 lightSpace = createLightSpaceMatrix();
-    const float elapsedTime = scene.getElapsedTime();
+    const int jellyfishCount = std::clamp(scene.getJellyfishCount(), 0, kJellyfishCount);
 
     const glm::mat4 sand = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.95f, 0.0f));
     const glm::mat4 spongebobModel = glm::scale(
@@ -111,15 +272,23 @@ void Renderer::render(const Scene& scene)
     //characterModel = glm::rotate(characterModel, -charYaw - glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Obrót
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     characterModel = glm::scale(characterModel, glm::vec3(0.45f));
-    pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, elapsedTime) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
+    if (jellyfishCount > kLightJellyfishIndex)
+    {
+        pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, scene.getJellyfishAnimationTime(kLightJellyfishIndex)) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
+        pointLightIntensity_ = 0.9f;
+    }
+    else
+    {
+        pointLightIntensity_ = 0.0f;
+    }
 
     //const glm::mat4 characterModel = glm::scale(
       //  glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -1.0f)),
         //glm::vec3(0.45f)
     //);
 
-    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel, elapsedTime);
-    renderPointShadowMap(spongebobModel, patrickModel, squidwardModel, characterModel, elapsedTime);
+    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel, scene, jellyfishCount);
+    renderPointShadowMap(spongebobModel, patrickModel, squidwardModel, characterModel, scene, jellyfishCount);
     
 
     glViewport(0, 0, static_cast<GLsizei>(scene.getFramebufferWidth()), static_cast<GLsizei>(scene.getFramebufferHeight()));
@@ -135,19 +304,16 @@ void Renderer::render(const Scene& scene)
     renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, true, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f);
     renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, true, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
     renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, true, scene.isToonShadingEnabled(), &spongebobTexture_, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
-    for (int i = 0; i < kJellyfishCount; ++i)
+    for (int i = 0; i < jellyfishCount; ++i)
     {
         const bool isLightSource = i == kLightJellyfishIndex;
         const glm::vec3 jellyfishColor = isLightSource ? glm::vec3(0.45f, 0.95f, 1.0f) : glm::vec3(1.0f, 0.42f, 0.78f);
-        renderModel(jellyfishModel_, createJellyfishTransform(i, elapsedTime), view, projection, lightSpace, jellyfishColor, smallModelOutlineThickness, isLightSource ? 2.2f : 1.6f, true, scene.isToonShadingEnabled(), nullptr, false, isLightSource, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, isLightSource ? 0.18f : 0.35f);
+        renderModel(jellyfishModel_, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)), view, projection, lightSpace, jellyfishColor, smallModelOutlineThickness, isLightSource ? 2.2f : 1.6f, true, scene.isToonShadingEnabled(), nullptr, false, isLightSource, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, isLightSource ? 0.18f : 0.35f);
     }
-    renderOutlineSlider(scene);
-    renderToonToggle(scene);
 }
 
 void Renderer::shutdown()
 {
-    deleteUiResources();
     deleteSkyboxResources();
     deleteShadowResources();
     spongebobTexture_.destroy();
@@ -161,7 +327,6 @@ void Renderer::shutdown()
     deleteMesh(sphere_);
     glDeleteProgram(shadowProgram_);
     glDeleteProgram(pointShadowProgram_);
-    glDeleteProgram(uiProgram_);
     glDeleteProgram(skyboxProgram_);
     glDeleteProgram(outlineProgram_);
     glDeleteProgram(pbrProgram_);
@@ -169,7 +334,6 @@ void Renderer::shutdown()
     sphere_ = {};
     shadowProgram_ = 0;
     pointShadowProgram_ = 0;
-    uiProgram_ = 0;
     skyboxProgram_ = 0;
     outlineProgram_ = 0;
     pbrProgram_ = 0;
@@ -288,22 +452,6 @@ Renderer::Mesh Renderer::createSandMesh(float size) const
     return mesh;
 }
 
-void Renderer::createUiResources()
-{
-    glGenVertexArrays(1, &uiVao_);
-    glGenBuffers(1, &uiVbo_);
-
-    glBindVertexArray(uiVao_);
-    glBindBuffer(GL_ARRAY_BUFFER, uiVbo_);
-    glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
 bool Renderer::createSkyboxResources()
 {
     const float vertices[] = {
@@ -342,9 +490,17 @@ bool Renderer::createSkyboxResources()
 
 bool Renderer::createUnderwaterCubemap()
 {
-    constexpr int size = 64;
+    constexpr int size = 768;
     constexpr int channels = 3;
     std::array<unsigned char, size * size * channels> pixels = {};
+    const std::array<std::vector<float>, 6> flowerMasks = {
+        createFlowerMask("assets/models/flowers/flower_1.obj", size),
+        createFlowerMask("assets/models/flowers/flower_3.obj", size),
+        createFlowerMask("assets/models/flowers/flower_5.obj", size),
+        createFlowerMask("assets/models/flowers/flower_7.obj", size),
+        createFlowerMask("assets/models/flowers/flower_9.obj", size),
+        createFlowerMask("assets/models/flowers/flower_11.obj", size)
+    };
 
     glGenTextures(1, &skyboxCubemap_);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxCubemap_);
@@ -381,6 +537,50 @@ bool Renderer::createUnderwaterCubemap()
                 glm::vec3 color = glm::mix(deepColor, midColor, height);
                 color = glm::mix(color, surfaceColor, surfaceLight * 0.55f);
                 color += glm::vec3(0.05f, 0.18f, 0.16f) * caustics;
+
+                if (!flowerMasks.empty())
+                {
+                    static constexpr float panelCenters[] = {0.22f, 0.34f, 0.46f, 0.58f, 0.70f, 0.82f};
+                    static constexpr glm::vec3 panelColors[] = {
+                        glm::vec3(0.98f, 0.78f, 0.28f),
+                        glm::vec3(0.95f, 0.25f, 0.52f),
+                        glm::vec3(0.20f, 0.95f, 0.78f),
+                        glm::vec3(0.92f, 0.55f, 1.00f),
+                        glm::vec3(0.98f, 0.40f, 0.18f),
+                        glm::vec3(0.72f, 0.98f, 0.30f)
+                    };
+                    constexpr float panelWidth = 0.095f;
+                    constexpr float panelMinY = -0.08f;
+                    constexpr float panelMaxY = 0.12f;
+                    const float longitude = (std::atan2(direction.x, -direction.z) / (2.0f * kPi)) + 0.5f;
+
+                    for (std::size_t panel = 0; panel < std::size(panelCenters); ++panel)
+                    {
+                        const std::vector<float>& flowerMask = flowerMasks[panel % flowerMasks.size()];
+                        if (flowerMask.empty())
+                        {
+                            continue;
+                        }
+
+                        const float halfWidth = panelWidth * 0.5f;
+                        const float horizontalDistance = std::abs(longitude - panelCenters[panel]);
+                        if (horizontalDistance > halfWidth || direction.y < panelMinY || direction.y > panelMaxY)
+                        {
+                            continue;
+                        }
+
+                        const float flowerU = (longitude - (panelCenters[panel] - halfWidth)) / panelWidth;
+                        const float flowerV = 1.0f - ((direction.y - panelMinY) / (panelMaxY - panelMinY));
+                        const int flowerX = glm::clamp(static_cast<int>(flowerU * static_cast<float>(size)), 0, size - 1);
+                        const int flowerY = glm::clamp(static_cast<int>(flowerV * static_cast<float>(size)), 0, size - 1);
+                        const float maskValue = flowerMask[static_cast<std::size_t>(flowerY * size + flowerX)];
+
+                        if (maskValue > 0.0f)
+                        {
+                            color = glm::mix(color, panelColors[panel], maskValue);
+                        }
+                    }
+                }
 
                 const int index = (y * size + x) * channels;
                 pixels[index + 0] = static_cast<unsigned char>(std::min(color.r, 1.0f) * 255.0f);
@@ -452,12 +652,6 @@ void Renderer::deleteMesh(const Mesh& mesh) const
     glDeleteBuffers(1, &mesh.ebo);
     glDeleteBuffers(1, &mesh.vbo);
     glDeleteVertexArrays(1, &mesh.vao);
-}
-
-void Renderer::deleteUiResources()
-{
-    glDeleteBuffers(1, &uiVbo_);
-    glDeleteVertexArrays(1, &uiVao_);
 }
 
 void Renderer::deleteSkyboxResources()
@@ -709,7 +903,7 @@ void Renderer::renderSkybox(const glm::mat4& view, const glm::mat4& projection) 
     glDepthMask(GL_TRUE);
 }
 
-void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, float elapsedTime) const
+void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const Scene& scene, int jellyfishCount) const
 {
     glViewport(0, 0, kShadowMapSize, kShadowMapSize);
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
@@ -720,17 +914,22 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
     renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
     renderModelShadowCaster(characterModel_, lightSpace, characterTransform);
-    for (int i = 0; i < kJellyfishCount; ++i)
+    for (int i = 0; i < jellyfishCount; ++i)
     {
-        renderModelShadowCaster(jellyfishModel_, lightSpace, createJellyfishTransform(i, elapsedTime));
+        renderModelShadowCaster(jellyfishModel_, lightSpace, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)));
     }
     glUseProgram(0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::renderPointShadowMap(const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, float elapsedTime) const
+void Renderer::renderPointShadowMap(const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const Scene& scene, int jellyfishCount) const
 {
+    if (jellyfishCount <= kLightJellyfishIndex)
+    {
+        return;
+    }
+
     const glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1.0f, kPointLightNearPlane, kPointLightFarPlane);
     const glm::vec3 position = pointLightPosition_;
     const glm::mat4 lightViews[] = {
@@ -758,13 +957,13 @@ void Renderer::renderPointShadowMap(const glm::mat4& spongebobTransform, const g
         renderPointShadowCaster(patrickModel_, lightSpace, patrickTransform);
         renderPointShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
         renderPointShadowCaster(characterModel_, lightSpace, characterTransform);
-        for (int i = 0; i < kJellyfishCount; ++i)
+        for (int i = 0; i < jellyfishCount; ++i)
         {
             if (i == kLightJellyfishIndex)
             {
                 continue;
             }
-            renderPointShadowCaster(jellyfishModel_, lightSpace, createJellyfishTransform(i, elapsedTime));
+            renderPointShadowCaster(jellyfishModel_, lightSpace, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)));
         }
     }
 
@@ -803,51 +1002,6 @@ void Renderer::renderPointShadowCaster(const Model& assetModel, const glm::mat4&
     assetModel.draw();
 }
 
-void Renderer::renderOutlineSlider(const Scene& scene) const
-{
-    const float x = Scene::kOutlineSliderX;
-    const float y = Scene::kOutlineSliderY;
-    const float width = Scene::kOutlineSliderWidth;
-    const float height = Scene::kOutlineSliderHeight;
-    const float value = scene.getOutlineSliderValue();
-    const float thumbWidth = 10.0f;
-    const float thumbX = x + value * width - thumbWidth * 0.5f;
-
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glUseProgram(uiProgram_);
-    glUniform2f(glGetUniformLocation(uiProgram_, "uScreenSize"), scene.getFramebufferWidth(), scene.getFramebufferHeight());
-
-    drawUiQuad(x - 4.0f, y - 4.0f, width + 8.0f, height + 8.0f, glm::vec3(0.03f, 0.11f, 0.18f));
-    drawUiQuad(x, y, width, height, glm::vec3(0.06f, 0.19f, 0.31f));
-    drawUiQuad(x, y, width * value, height, glm::vec3(0.0f, 0.10f, 0.38f));
-    drawUiQuad(thumbX, y - 5.0f, thumbWidth, height + 10.0f, glm::vec3(0.72f, 0.88f, 1.0f));
-
-    glUseProgram(0);
-    glEnable(GL_DEPTH_TEST);
-}
-
-void Renderer::renderToonToggle(const Scene& scene) const
-{
-    const float x = Scene::kToonToggleX;
-    const float y = Scene::kToonToggleY;
-    const float width = Scene::kToonToggleWidth;
-    const float height = Scene::kToonToggleHeight;
-    const bool isEnabled = scene.isToonShadingEnabled();
-
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glUseProgram(uiProgram_);
-    glUniform2f(glGetUniformLocation(uiProgram_, "uScreenSize"), scene.getFramebufferWidth(), scene.getFramebufferHeight());
-
-    drawUiQuad(x - 4.0f, y - 4.0f, width + 8.0f, height + 8.0f, glm::vec3(0.03f, 0.11f, 0.18f));
-    drawUiQuad(x, y, width, height, isEnabled ? glm::vec3(0.0f, 0.16f, 0.44f) : glm::vec3(0.34f, 0.22f, 0.08f));
-    drawUiText(x + 9.0f, y + 7.0f, isEnabled ? "TOON ON" : "PBR ON", 2.0f, isEnabled ? glm::vec3(0.92f, 0.95f, 1.0f) : glm::vec3(0.95f, 0.86f, 0.58f));
-
-    glUseProgram(0);
-    glEnable(GL_DEPTH_TEST);
-}
-
 void Renderer::drawSphere() const
 {
     drawMesh(sphere_);
@@ -858,147 +1012,6 @@ void Renderer::drawMesh(const Mesh& mesh) const
     glBindVertexArray(mesh.vao);
     glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
-}
-
-void Renderer::drawUiQuad(float x, float y, float width, float height, const glm::vec3& color) const
-{
-    const float vertices[] = {
-        x, y,
-        x + width, y,
-        x + width, y + height,
-        x, y,
-        x + width, y + height,
-        x, y + height
-    };
-
-    setVec3(uiProgram_, "uColor", color);
-    glBindVertexArray(uiVao_);
-    glBindBuffer(GL_ARRAY_BUFFER, uiVbo_);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
-void Renderer::drawUiText(float x, float y, const char* text, float scale, const glm::vec3& color) const
-{
-    float cursorX = x;
-    for (const char* character = text; *character != '\0'; ++character)
-    {
-        if (*character == ' ')
-        {
-            cursorX += 4.0f * scale;
-            continue;
-        }
-
-        drawUiGlyph(cursorX, y, *character, scale, color);
-        cursorX += 6.0f * scale;
-    }
-}
-
-void Renderer::drawUiGlyph(float x, float y, char glyph, float scale, const glm::vec3& color) const
-{
-    const char* pattern[7] = {};
-    switch (glyph)
-    {
-        case 'T':
-        {
-            static const char* t[] = {"11111", "00100", "00100", "00100", "00100", "00100", "00100"};
-            for (int i = 0; i < 7; ++i) pattern[i] = t[i];
-            break;
-        }
-        case 'O':
-        {
-            static const char* o[] = {"01110", "10001", "10001", "10001", "10001", "10001", "01110"};
-            for (int i = 0; i < 7; ++i) pattern[i] = o[i];
-            break;
-        }
-        case 'N':
-        {
-            static const char* n[] = {"10001", "11001", "10101", "10011", "10001", "10001", "10001"};
-            for (int i = 0; i < 7; ++i) pattern[i] = n[i];
-            break;
-        }
-        case 'F':
-        {
-            static const char* f[] = {"11111", "10000", "10000", "11110", "10000", "10000", "10000"};
-            for (int i = 0; i < 7; ++i) pattern[i] = f[i];
-            break;
-        }
-        case 'L':
-        {
-            static const char* l[] = {"10000", "10000", "10000", "10000", "10000", "10000", "11111"};
-            for (int i = 0; i < 7; ++i) pattern[i] = l[i];
-            break;
-        }
-        case 'I':
-        {
-            static const char* iPattern[] = {"11111", "00100", "00100", "00100", "00100", "00100", "11111"};
-            for (int i = 0; i < 7; ++i) pattern[i] = iPattern[i];
-            break;
-        }
-        case 'G':
-        {
-            static const char* g[] = {"01110", "10001", "10000", "10111", "10001", "10001", "01110"};
-            for (int i = 0; i < 7; ++i) pattern[i] = g[i];
-            break;
-        }
-        case 'H':
-        {
-            static const char* h[] = {"10001", "10001", "10001", "11111", "10001", "10001", "10001"};
-            for (int i = 0; i < 7; ++i) pattern[i] = h[i];
-            break;
-        }
-        case 'P':
-        {
-            static const char* p[] = {"11110", "10001", "10001", "11110", "10000", "10000", "10000"};
-            for (int i = 0; i < 7; ++i) pattern[i] = p[i];
-            break;
-        }
-        case 'B':
-        {
-            static const char* b[] = {"11110", "10001", "10001", "11110", "10001", "10001", "11110"};
-            for (int i = 0; i < 7; ++i) pattern[i] = b[i];
-            break;
-        }
-        case 'R':
-        {
-            static const char* r[] = {"11110", "10001", "10001", "11110", "10100", "10010", "10001"};
-            for (int i = 0; i < 7; ++i) pattern[i] = r[i];
-            break;
-        }
-        case 'S':
-        {
-            static const char* s[] = {"01111", "10000", "10000", "01110", "00001", "00001", "11110"};
-            for (int i = 0; i < 7; ++i) pattern[i] = s[i];
-            break;
-        }
-        case 'A':
-        {
-            static const char* a[] = {"01110", "10001", "10001", "11111", "10001", "10001", "10001"};
-            for (int i = 0; i < 7; ++i) pattern[i] = a[i];
-            break;
-        }
-        case 'D':
-        {
-            static const char* d[] = {"11110", "10001", "10001", "10001", "10001", "10001", "11110"};
-            for (int i = 0; i < 7; ++i) pattern[i] = d[i];
-            break;
-        }
-        default:
-            return;
-    }
-
-    for (int row = 0; row < 7; ++row)
-    {
-        for (int column = 0; column < 5; ++column)
-        {
-            if (pattern[row][column] == '1')
-            {
-                drawUiQuad(x + static_cast<float>(column) * scale, y + static_cast<float>(row) * scale, scale, scale, color);
-            }
-        }
-    }
 }
 
 glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const

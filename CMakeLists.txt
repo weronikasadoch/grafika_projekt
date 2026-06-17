@@ -26,11 +26,19 @@ add_executable(grafika_projekt
     "${APP_SOURCE_DIR}/Shader_Loader.h"
     "${APP_SOURCE_DIR}/Shader_Loader.cpp"
     "${APP_SOURCE_DIR}/objload.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui_draw.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui_tables.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui_widgets.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.cpp"
 )
 
 target_include_directories(grafika_projekt PRIVATE
     "${APP_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/glm"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/backends"
 )
 
 find_package(OpenGL REQUIRED)

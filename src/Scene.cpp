@@ -1,6 +1,7 @@
 #include "Scene.h"
 
 #include <GLFW/glfw3.h>
+#include <imgui.h>
 
 #include <algorithm>
 #include <cmath>
@@ -37,11 +38,16 @@ void Scene::updateFramebufferSize(int width, int height)
 
 void Scene::processInput(GLFWwindow* window)
 {
-    updateUi(window);
-
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    const bool isEscapePressed = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
+    if (isEscapePressed && !wasEscapePressed_)
     {
-        glfwSetWindowShouldClose(window, true);
+        menuOpen_ = !menuOpen_;
+    }
+    wasEscapePressed_ = isEscapePressed;
+
+    if (menuOpen_)
+    {
+        return;
     }
 
     const float rotationVelocity = kCameraRotationSpeed * deltaTime_;
@@ -94,35 +100,69 @@ void Scene::processInput(GLFWwindow* window)
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        cameraHeightAbove_ = std::min(3.0f, cameraHeightAbove_ + cameraVerticalSpeed); 
+        cameraHeightAbove_ = std::min(3.0f, cameraHeightAbove_ + cameraVerticalSpeed);
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
-        cameraHeightAbove_ = std::max(1.0f, cameraHeightAbove_ - cameraVerticalSpeed); 
+        cameraHeightAbove_ = std::max(1.0f, cameraHeightAbove_ - cameraVerticalSpeed);
     }
 
-    float totalCameraYaw = characterYaw_ + cameraYawOffset_;
-
-    glm::vec3 cameraFrontVec;
-    cameraFrontVec.x = cos(totalCameraYaw);
-    cameraFrontVec.y = 0.0f;
-    cameraFrontVec.z = sin(totalCameraYaw);
-    cameraFrontVec = glm::normalize(cameraFrontVec);
-
-    glm::vec3 cameraPos = characterPosition_ - (cameraFrontVec * cameraDistance_) + glm::vec3(0.0f, cameraHeightAbove_, 0.0f);
-    camera_.setPosition(cameraPos);
-    glm::quat targetOrientation = glm::angleAxis(-totalCameraYaw - glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    float pitchDeg = -4.0f - (cameraHeightAbove_ * 10.0f); 
-    glm::quat pitchAngle = glm::angleAxis(glm::radians(pitchDeg), glm::vec3(1.0f, 0.0f, 0.0f));
-
-    camera_.setOrientation(targetOrientation * pitchAngle);
-    
+    updateCamera();
 }
 
 void Scene::updateDeltaTime(float currentFrameTime)
 {
     deltaTime_ = currentFrameTime - lastFrameTime_;
     lastFrameTime_ = currentFrameTime;
+
+    if (!menuOpen_)
+    {
+        const int visibleJellyfishCount = std::clamp(jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
+        for (int i = 0; i < visibleJellyfishCount; ++i)
+        {
+            jellyfishAnimationTimes_[static_cast<std::size_t>(i)] += deltaTime_;
+        }
+    }
+}
+
+void Scene::renderUi(GLFWwindow* window)
+{
+    if (!menuOpen_)
+    {
+        return;
+    }
+
+    const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5f, displaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_Always);
+
+    const ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_AlwaysAutoResize;
+
+    ImGui::Begin("Pause Menu", nullptr, flags);
+
+    if (ImGui::Button("Resume", ImVec2(-1.0f, 0.0f)))
+    {
+        menuOpen_ = false;
+    }
+
+    ImGui::Separator();
+    ImGui::Checkbox("Toon shading", &toonShadingEnabled_);
+    ImGui::SliderFloat("Outline", &outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness, "%.3f");
+    outlineThickness_ = std::clamp(outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness);
+    ImGui::SliderInt("Jellyfish", &jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
+    jellyfishCount_ = std::clamp(jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
+
+    ImGui::Separator();
+    if (ImGui::Button("Quit", ImVec2(-1.0f, 0.0f)))
+    {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+
+    ImGui::End();
 }
 
 Camera& Scene::getCamera()
@@ -160,9 +200,19 @@ float Scene::getOutlineThickness() const
     return outlineThickness_;
 }
 
-float Scene::getOutlineSliderValue() const
+int Scene::getJellyfishCount() const
 {
-    return (outlineThickness_ - kOutlineMinThickness) / (kOutlineMaxThickness - kOutlineMinThickness);
+    return jellyfishCount_;
+}
+
+float Scene::getJellyfishAnimationTime(int index) const
+{
+    if (index < 0 || index >= kMaxJellyfishCount)
+    {
+        return 0.0f;
+    }
+
+    return jellyfishAnimationTimes_[static_cast<std::size_t>(index)];
 }
 
 bool Scene::isToonShadingEnabled() const
@@ -170,57 +220,28 @@ bool Scene::isToonShadingEnabled() const
     return toonShadingEnabled_;
 }
 
-void Scene::updateUi(GLFWwindow* window)
+bool Scene::isMenuOpen() const
 {
-    const bool isLeftMousePressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-    if (!isLeftMousePressed)
-    {
-        isDraggingOutlineSlider_ = false;
-        wasLeftMousePressed_ = false;
-        return;
-    }
-
-    double cursorWindowX = 0.0;
-    double cursorWindowY = 0.0;
-    glfwGetCursorPos(window, &cursorWindowX, &cursorWindowY);
-
-    int windowWidth = 1;
-    int windowHeight = 1;
-    glfwGetWindowSize(window, &windowWidth, &windowHeight);
-
-    const float framebufferX = static_cast<float>(cursorWindowX) * static_cast<float>(width_) / static_cast<float>(windowWidth == 0 ? 1 : windowWidth);
-    const float framebufferY = static_cast<float>(cursorWindowY) * static_cast<float>(height_) / static_cast<float>(windowHeight == 0 ? 1 : windowHeight);
-
-    const bool isOverSlider =
-        framebufferX >= kOutlineSliderX &&
-        framebufferX <= kOutlineSliderX + kOutlineSliderWidth &&
-        framebufferY >= kOutlineSliderY &&
-        framebufferY <= kOutlineSliderY + kOutlineSliderHeight;
-    const bool isOverToonToggle =
-        framebufferX >= kToonToggleX &&
-        framebufferX <= kToonToggleX + kToonToggleWidth &&
-        framebufferY >= kToonToggleY &&
-        framebufferY <= kToonToggleY + kToonToggleHeight;
-
-    if (!wasLeftMousePressed_ && isOverToonToggle)
-    {
-        toonShadingEnabled_ = !toonShadingEnabled_;
-    }
-    wasLeftMousePressed_ = true;
-
-    if (!isDraggingOutlineSlider_ && !isOverSlider)
-    {
-        return;
-    }
-
-    isDraggingOutlineSlider_ = true;
-    const float sliderValue = std::clamp((framebufferX - kOutlineSliderX) / kOutlineSliderWidth, 0.0f, 1.0f);
-    setOutlineThickness(kOutlineMinThickness + sliderValue * (kOutlineMaxThickness - kOutlineMinThickness));
+    return menuOpen_;
 }
 
-void Scene::setOutlineThickness(float thickness)
+void Scene::updateCamera()
 {
-    outlineThickness_ = std::clamp(thickness, kOutlineMinThickness, kOutlineMaxThickness);
+    const float totalCameraYaw = characterYaw_ + cameraYawOffset_;
+
+    glm::vec3 cameraFrontVec;
+    cameraFrontVec.x = cos(totalCameraYaw);
+    cameraFrontVec.y = 0.0f;
+    cameraFrontVec.z = sin(totalCameraYaw);
+    cameraFrontVec = glm::normalize(cameraFrontVec);
+
+    const glm::vec3 cameraPos = characterPosition_ - (cameraFrontVec * cameraDistance_) + glm::vec3(0.0f, cameraHeightAbove_, 0.0f);
+    camera_.setPosition(cameraPos);
+
+    const glm::quat targetOrientation = glm::angleAxis(-totalCameraYaw - glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    const float pitchDeg = -4.0f - (cameraHeightAbove_ * 10.0f);
+    const glm::quat pitchAngle = glm::angleAxis(glm::radians(pitchDeg), glm::vec3(1.0f, 0.0f, 0.0f));
+    camera_.setOrientation(targetOrientation * pitchAngle);
 }
 
 glm::vec3 Scene::applyCharacterPhysics(const glm::vec3& candidatePosition) const
