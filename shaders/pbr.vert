@@ -4,11 +4,13 @@ layout (location = 0) in vec3 aPosition;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoord;
 layout (location = 3) in vec3 aMaterialColor;
+layout (location = 4) in mat4 aInstanceModel;
 
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 uniform mat4 uLightSpaceMatrix;
+uniform int uUseInstancing;
 
 out vec3 vWorldPosition;
 out vec3 vWorldNormal;
@@ -18,8 +20,9 @@ out vec3 vMaterialColor;
 
 void main()
 {
-    vec4 worldPosition = uModel * vec4(aPosition, 1.0);
-    mat3 normalMatrix = transpose(inverse(mat3(uModel)));
+    mat4 model = uUseInstancing == 1 ? aInstanceModel : uModel;
+    vec4 worldPosition = model * vec4(aPosition, 1.0);
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
 
     vWorldPosition = worldPosition.xyz;
     vWorldNormal = normalize(normalMatrix * aNormal);

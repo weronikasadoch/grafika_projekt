@@ -9,10 +9,8 @@ in vec3 vMaterialColor;
 uniform vec3 uBaseColor;
 uniform vec3 uLightDirection;
 uniform vec3 uAmbientColor;
-uniform sampler2D uShadowMap;
 uniform sampler2D uDiffuseTexture;
-uniform samplerCube uPointShadowMap;
-uniform int uReceiveShadow;
+uniform sampler2D uShadowMap;
 uniform int uUseToonShading;
 uniform int uUseMaterialColor;
 uniform int uUseDiffuseTexture;
@@ -21,16 +19,14 @@ uniform vec3 uPointLightPosition;
 uniform vec3 uPointLightColor;
 uniform float uPointLightIntensity;
 uniform float uPointLightRadius;
-uniform float uPointLightFarPlane;
 uniform int uUseEmission;
 
 out vec4 fragColor;
 
-float calculateShadow()
+float calculateShadow(vec3 normal, vec3 lightDir)
 {
     vec3 projectedCoords = vLightSpacePosition.xyz / vLightSpacePosition.w;
     projectedCoords = projectedCoords * 0.5 + 0.5;
-
     if (projectedCoords.x < 0.0 || projectedCoords.x > 1.0 ||
         projectedCoords.y < 0.0 || projectedCoords.y > 1.0 ||
         projectedCoords.z > 1.0)
@@ -39,10 +35,9 @@ float calculateShadow()
     }
 
     float currentDepth = projectedCoords.z;
-    float bias = 0.006;
-    float shadow = 0.0;
+    float bias = max(0.0015 * (1.0 - dot(normal, lightDir)), 0.0005);
     vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
-
+    float shadow = 0.0;
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
@@ -51,21 +46,7 @@ float calculateShadow()
             shadow += currentDepth - bias > closestDepth ? 1.0 : 0.0;
         }
     }
-
     return shadow / 9.0;
-}
-
-float calculatePointShadow(vec3 pointVector)
-{
-    float currentDepth = length(pointVector);
-    if (currentDepth > uPointLightFarPlane)
-    {
-        return 0.0;
-    }
-
-    float closestDepth = texture(uPointShadowMap, pointVector).r * uPointLightFarPlane;
-    float bias = 0.04;
-    return currentDepth - bias > closestDepth ? 1.0 : 0.0;
 }
 
 void main()
@@ -88,7 +69,6 @@ void main()
         }
     }
 
-    float shadow = uReceiveShadow == 1 ? calculateShadow() : 0.0;
     vec3 surfaceColor = uUseMaterialColor == 1 ? vMaterialColor * uMaterialBrightness : uBaseColor;
     if (uUseDiffuseTexture == 1)
     {
@@ -96,7 +76,7 @@ void main()
     }
 
     vec3 litColor = surfaceColor * shade;
-    litColor *= mix(1.0, 0.45, shadow);
+    litColor *= mix(1.0, 0.45, calculateShadow(normal, lightDir));
 
     vec3 pointVector = uPointLightPosition - vWorldPosition;
     float pointDistance = length(pointVector);
@@ -104,10 +84,8 @@ void main()
     float pointNdotL = max(dot(normal, pointDirection), 0.0);
     float pointAttenuation = clamp(1.0 - pointDistance / uPointLightRadius, 0.0, 1.0);
     pointAttenuation *= pointAttenuation;
-    float pointShadow = calculatePointShadow(vWorldPosition - uPointLightPosition);
-    float pointVisibility = 1.0 - pointShadow;
-    litColor += surfaceColor * uPointLightColor * pointNdotL * pointAttenuation * uPointLightIntensity * pointVisibility;
-    litColor += uPointLightColor * pointAttenuation * 0.06 * pointVisibility;
+    litColor += surfaceColor * uPointLightColor * pointNdotL * pointAttenuation * uPointLightIntensity;
+    litColor += uPointLightColor * pointAttenuation * 0.06;
 
     if (uUseEmission == 1)
     {

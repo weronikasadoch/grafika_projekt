@@ -22,6 +22,7 @@ class Model
 public:
     bool loadFromObj(const std::string& path);
     void draw() const;
+    void drawInstanced(GLuint instanceBuffer, GLsizei instanceCount) const;
     void destroy();
     bool isLoaded() const { return vao_ != 0 && indexCount_ > 0; }
 

@@ -11,10 +11,8 @@ uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
 uniform vec3 uLightColor;
 uniform vec3 uAmbientColor;
-uniform sampler2D uShadowMap;
 uniform sampler2D uDiffuseTexture;
-uniform samplerCube uPointShadowMap;
-uniform int uReceiveShadow;
+uniform sampler2D uShadowMap;
 uniform int uUseMaterialColor;
 uniform int uUseDiffuseTexture;
 uniform float uMaterialBrightness;
@@ -26,14 +24,13 @@ uniform vec3 uPointLightPosition;
 uniform vec3 uPointLightColor;
 uniform float uPointLightIntensity;
 uniform float uPointLightRadius;
-uniform float uPointLightFarPlane;
 uniform int uUseEmission;
 
 out vec4 fragColor;
 
 const float PI = 3.14159265359;
 
-float calculateShadow()
+float calculateShadow(vec3 normal, vec3 lightDir)
 {
     vec3 projectedCoords = vLightSpacePosition.xyz / vLightSpacePosition.w;
     projectedCoords = projectedCoords * 0.5 + 0.5;
@@ -45,9 +42,9 @@ float calculateShadow()
     }
 
     float currentDepth = projectedCoords.z;
-    float bias = 0.006;
-    float shadow = 0.0;
+    float bias = max(0.0015 * (1.0 - dot(normal, lightDir)), 0.0005);
     vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
+    float shadow = 0.0;
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
@@ -57,19 +54,6 @@ float calculateShadow()
         }
     }
     return shadow / 9.0;
-}
-
-float calculatePointShadow(vec3 pointVector)
-{
-    float currentDepth = length(pointVector);
-    if (currentDepth > uPointLightFarPlane)
-    {
-        return 0.0;
-    }
-
-    float closestDepth = texture(uPointShadowMap, pointVector).r * uPointLightFarPlane;
-    float bias = 0.04;
-    return currentDepth - bias > closestDepth ? 1.0 : 0.0;
 }
 
 float distributionGGX(vec3 normal, vec3 halfway, float roughness)
@@ -134,24 +118,25 @@ void main()
     float roughness = clamp(uRoughness, 0.04, 1.0);
     vec3 normal = normalize(vWorldNormal);
     vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
+    vec3 globalLightDir = normalize(-uLightDirection);
+    float shadow = calculateShadow(normal, globalLightDir);
+    float globalVisibility = mix(1.0, 0.42, shadow);
 
-    float directionalShadow = uReceiveShadow == 1 ? calculateShadow() : 0.0;
     if (uUseFastPbr == 1)
     {
-        vec3 lightDir = normalize(-uLightDirection);
-        float ndotl = max(dot(normal, lightDir), 0.0);
-        vec3 halfway = normalize(viewDir + lightDir);
+        float ndotl = max(dot(normal, globalLightDir), 0.0);
+        vec3 halfway = normalize(viewDir + globalLightDir);
         float specularPower = mix(64.0, 4.0, roughness);
         float specular = pow(max(dot(normal, halfway), 0.0), specularPower) * (1.0 - roughness) * (1.0 - metallic);
         vec3 color = uAmbientColor * albedo * uAo;
-        color += (albedo * ndotl + vec3(specular)) * uLightColor * (1.0 - directionalShadow);
+        color += (albedo * ndotl + vec3(specular)) * uLightColor * globalVisibility;
         color = color / (color + vec3(1.0));
         color = pow(color, vec3(1.0 / 2.2));
         fragColor = vec4(color, 1.0);
         return;
     }
 
-    vec3 direct = calculatePbrLight(albedo, normal, viewDir, normalize(-uLightDirection), uLightColor * (1.0 - directionalShadow), metallic, roughness);
+    vec3 direct = calculatePbrLight(albedo, normal, viewDir, globalLightDir, uLightColor * globalVisibility, metallic, roughness);
 
     vec3 point = vec3(0.0);
     vec3 pointVector = uPointLightPosition - vWorldPosition;
@@ -161,8 +146,7 @@ void main()
         vec3 pointDir = pointDistance > 0.001 ? pointVector / pointDistance : normal;
         float pointAttenuation = 1.0 - pointDistance / uPointLightRadius;
         pointAttenuation *= pointAttenuation;
-        float pointVisibility = 1.0 - calculatePointShadow(vWorldPosition - uPointLightPosition);
-        vec3 pointRadiance = uPointLightColor * uPointLightIntensity * pointAttenuation * pointVisibility;
+        vec3 pointRadiance = uPointLightColor * uPointLightIntensity * pointAttenuation;
         point = calculatePbrLight(albedo, normal, viewDir, pointDir, pointRadiance, metallic, roughness);
     }
 

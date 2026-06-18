@@ -1,6 +1,7 @@
 #include "Model.h"
 
 #include <array>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -293,6 +294,38 @@ void Model::draw() const
 {
     glBindVertexArray(vao_);
     glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, nullptr);
+    glBindVertexArray(0);
+}
+
+void Model::drawInstanced(GLuint instanceBuffer, GLsizei instanceCount) const
+{
+    if (instanceCount <= 0)
+    {
+        return;
+    }
+
+    glBindVertexArray(vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, instanceBuffer);
+
+    constexpr GLsizei matrixStride = 16 * sizeof(float);
+    for (int column = 0; column < 4; ++column)
+    {
+        const GLuint attribute = static_cast<GLuint>(4 + column);
+        glEnableVertexAttribArray(attribute);
+        glVertexAttribPointer(
+            attribute,
+            4,
+            GL_FLOAT,
+            GL_FALSE,
+            matrixStride,
+            reinterpret_cast<void*>(static_cast<std::size_t>(column * 4) * sizeof(float))
+        );
+        glVertexAttribDivisor(attribute, 1);
+    }
+
+    glDrawElementsInstanced(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, nullptr, instanceCount);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
