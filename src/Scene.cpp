@@ -90,23 +90,6 @@ void Scene::processInput(GLFWwindow* window)
     const float cameraOrbitSpeed = kCameraRotationSpeed * deltaTime_ * 0.03f;
     const float cameraVerticalSpeed = 2.0f * deltaTime_;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-    {
-        cameraYawOffset_ += cameraOrbitSpeed;
-    }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-    {
-        cameraYawOffset_ -= cameraOrbitSpeed;
-    }
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-    {
-        cameraHeightAbove_ = std::min(3.0f, cameraHeightAbove_ + cameraVerticalSpeed);
-    }
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-    {
-        cameraHeightAbove_ = std::max(1.0f, cameraHeightAbove_ - cameraVerticalSpeed);
-    }
-
     updateCamera();
 }
 
@@ -268,12 +251,13 @@ glm::vec3 Scene::resolveHouseCollisions(const glm::vec3& position) const
         glm::vec2 minBounds;
         glm::vec2 maxBounds;
     };
-
-    static constexpr CollisionBox houseColliders[] = {
-        {glm::vec2(-0.69f, -4.02f), glm::vec2( 0.67f, -2.63f)},
+    
+    static const CollisionBox houseColliders[] = {
+        {glm::vec2(-0.69f, -4.02f), glm::vec2(0.67f, -2.63f)},
         {glm::vec2(-3.80f, -3.34f), glm::vec2(-2.18f, -1.85f)},
-        {glm::vec2( 2.22f, -3.72f), glm::vec2( 3.59f, -2.44f)}
+        {glm::vec2(2.22f, -3.72f), glm::vec2(3.59f, -2.44f)},
     };
+   
     constexpr float characterRadius = 0.18f;
 
     glm::vec2 resolved(position.x, position.z);
@@ -413,4 +397,33 @@ void Scene::loadSandCollisionMesh(const char* path)
             }
         }
     }
+}
+void Scene::handleMouseMovement(double xpos, double ypos)
+{
+    if (menuOpen_) return;
+
+    static float lastX = static_cast<float>(width_) * 0.5f;
+    static float lastY = static_cast<float>(height_) * 0.5f;
+    static bool firstMouse = true;
+
+    if (firstMouse)
+    {
+        lastX = static_cast<float>(xpos);
+        lastY = static_cast<float>(ypos);
+        firstMouse = false;
+    }
+
+    float xoffset = static_cast<float>(xpos) - lastX;
+    float yoffset = lastY - static_cast<float>(ypos); 
+
+    lastX = static_cast<float>(xpos);
+    lastY = static_cast<float>(ypos);
+
+    constexpr float sensitivity = 0.005f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity * 2.0f;
+
+    cameraYawOffset_ -= xoffset;
+
+    cameraHeightAbove_ = std::clamp(cameraHeightAbove_ + yoffset, -5.0f, 10.0f);
 }

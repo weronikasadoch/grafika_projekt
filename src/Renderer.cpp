@@ -282,8 +282,9 @@ bool Renderer::initialize()
     const bool coral9Loaded = coral9Model_.loadFromObj("assets/models/coral_rock/coral_9.obj");
     const bool coral10Loaded = coral10Model_.loadFromObj("assets/models/coral_rock/coral_10.obj");
 
-    const bool spongebobTextureLoaded = spongebobTexture_.loadPPM("assets/models/Spongebob_model/spongebob.ppm");
+    const bool spongebobTextureLoaded = true;
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
+   
     const bool skyboxResourcesCreated = createSkyboxResources();
     const bool shadowResourcesCreated = createShadowResources();
     glGenBuffers(1, &coralInstanceVbo_);
@@ -341,10 +342,9 @@ void Renderer::render(const Scene& scene)
     float charYaw = scene.getCharacterYaw();
 
     glm::mat4 characterModel = glm::mat4(1.0f);
-    characterModel = glm::translate(characterModel, charPos); // <-- Tutaj aplikujemy ruch!
-    //characterModel = glm::rotate(characterModel, -charYaw - glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Obrót
+    characterModel = glm::translate(characterModel, charPos); 
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    characterModel = glm::scale(characterModel, glm::vec3(0.45f));
+    characterModel = glm::scale(characterModel, glm::vec3(0.15f));
     if (jellyfishCount > kLightJellyfishIndex)
     {
         pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, scene.getJellyfishAnimationTime(kLightJellyfishIndex)) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
@@ -355,15 +355,11 @@ void Renderer::render(const Scene& scene)
         pointLightIntensity_ = 0.0f;
     }
 
-    //const glm::mat4 characterModel = glm::scale(
-      //  glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -1.0f)),
-        //glm::vec3(0.45f)
-    //);
 
     renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel, scene, jellyfishCount);
 
     glViewport(0, 0, static_cast<GLsizei>(scene.getFramebufferWidth()), static_cast<GLsizei>(scene.getFramebufferHeight()));
-    glClearColor(0.01f, 0.12f, 0.20f, 1.0f);
+    glClearColor(0.05f, 0.35f, 0.50f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     renderSkybox(view, projection);
 
@@ -376,7 +372,7 @@ void Renderer::render(const Scene& scene)
     renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f);
     renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f);
     renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
-    renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, scene.isToonShadingEnabled(), &spongebobTexture_, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
+    renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f),smallModelOutlineThickness,1.4f, scene.isToonShadingEnabled(), &spongebobFallbackTexture_,false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
     for (int i = 0; i < jellyfishCount; ++i)
     {
         const bool isLightSource = i == kLightJellyfishIndex;
@@ -463,7 +459,7 @@ bool Renderer::createUnderwaterCubemap()
 {
     constexpr int size = 768;
     constexpr int channels = 3;
-    std::array<unsigned char, size * size * channels> pixels = {};
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(size * size * channels), 0);
     const std::array<std::vector<float>, 6> flowerMasks = {
         createFlowerMask("assets/models/flowers/flower_1.obj", size),
         createFlowerMask("assets/models/flowers/flower_3.obj", size),
@@ -502,9 +498,9 @@ bool Renderer::createUnderwaterCubemap()
                 const float waveLines = std::sin((direction.x * 16.0f + direction.z * 9.0f) + std::sin(direction.z * 18.0f) * 0.7f);
                 const float caustics = std::max(waveLines, 0.0f) * surfaceLight * surfaceLight;
 
-                glm::vec3 deepColor(0.005f, 0.08f, 0.13f);
-                glm::vec3 midColor(0.02f, 0.26f, 0.34f);
-                glm::vec3 surfaceColor(0.22f, 0.72f, 0.78f);
+                glm::vec3 deepColor(0.05f, 0.35f, 0.55f);
+                glm::vec3 midColor(0.10f, 0.55f, 0.70f);
+                glm::vec3 surfaceColor(0.40f, 0.85f, 0.90f);
                 glm::vec3 color = glm::mix(deepColor, midColor, height);
                 color = glm::mix(color, surfaceColor, surfaceLight * 0.55f);
                 color += glm::vec3(0.05f, 0.18f, 0.16f) * caustics;
@@ -512,7 +508,7 @@ bool Renderer::createUnderwaterCubemap()
                 if (!flowerMasks.empty())
                 {
                     static constexpr float panelCenters[] = {0.22f, 0.34f, 0.46f, 0.58f, 0.70f, 0.82f};
-                    static constexpr glm::vec3 panelColors[] = {
+                    static const glm::vec3 panelColors[] = {
                         glm::vec3(0.98f, 0.78f, 0.28f),
                         glm::vec3(0.95f, 0.25f, 0.52f),
                         glm::vec3(0.20f, 0.95f, 0.78f),
@@ -520,6 +516,7 @@ bool Renderer::createUnderwaterCubemap()
                         glm::vec3(0.98f, 0.40f, 0.18f),
                         glm::vec3(0.72f, 0.98f, 0.30f)
                     };
+                    
                     constexpr float panelWidth = 0.095f;
                     constexpr float panelMinY = -0.08f;
                     constexpr float panelMaxY = 0.12f;
@@ -648,7 +645,7 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
         setVec3(pbrUniforms_.baseColor, baseColor);
         setVec3(pbrUniforms_.cameraPosition, glm::vec3(glm::inverse(view)[3]));
         setVec3(pbrUniforms_.lightDirection, kLightDirection);
-        setVec3(pbrUniforms_.lightColor, glm::vec3(1.25f, 1.38f, 1.32f));
+        setVec3(pbrUniforms_.lightColor, glm::vec3(2.0f, 2.2f, 2.1f));
         setVec3(pbrUniforms_.ambientColor, ambientColor);
         setInt(pbrUniforms_.useMaterialColor, useMaterialColor ? 1 : 0);
         setInt(pbrUniforms_.useDiffuseTexture, diffuseTexture != nullptr ? 1 : 0);
@@ -714,7 +711,7 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
         setInt(toonUniforms_.diffuseTexture, 0);
         diffuseTexture->bind(GL_TEXTURE0);
     }
-    
+
     assetModel.draw();
     if (diffuseTexture != nullptr)
     {
@@ -941,17 +938,17 @@ glm::mat4 Renderer::createCoralTransform(int index, const Scene& scene) const
 
 glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
 {
-    static constexpr glm::vec3 basePositions[kJellyfishCount] = {
-        glm::vec3(-4.6f, -0.45f, -4.7f),
-        glm::vec3(-2.8f, -0.20f, -5.8f),
-        glm::vec3(-1.1f,  0.05f, -4.3f),
-        glm::vec3( 1.4f, -0.10f, -5.5f),
-        glm::vec3( 3.4f, -0.35f, -4.4f),
-        glm::vec3( 4.7f,  0.10f, -2.2f),
-        glm::vec3( 2.6f,  0.28f, -0.5f),
-        glm::vec3( 0.0f,  0.02f, -0.2f),
-        glm::vec3(-2.4f,  0.20f, -1.2f),
-        glm::vec3(-4.2f, -0.15f, -2.6f)
+    static const glm::vec3 basePositions[kJellyfishCount] = {
+    glm::vec3(-4.6f, -0.45f, -4.7f),
+    glm::vec3(-2.8f, -0.20f, -5.8f),
+    glm::vec3(-1.1f,  0.05f, -4.3f),
+    glm::vec3(1.4f, -0.10f, -5.5f),
+    glm::vec3(3.4f, -0.35f, -4.4f),
+    glm::vec3(4.7f,  0.10f, -2.2f),
+    glm::vec3(2.6f,  0.28f, -0.5f),
+    glm::vec3(0.0f,  0.02f, -0.2f),
+    glm::vec3(-2.4f,  0.20f, -1.2f),
+    glm::vec3(-4.2f, -0.15f, -2.6f)
     };
     static constexpr float radii[kJellyfishCount] = {0.55f, 0.42f, 0.62f, 0.48f, 0.58f, 0.38f, 0.52f, 0.44f, 0.60f, 0.46f};
     static constexpr float speeds[kJellyfishCount] = {0.82f, 0.64f, 0.74f, 0.91f, 0.57f, 0.86f, 0.69f, 0.78f, 0.61f, 0.73f};

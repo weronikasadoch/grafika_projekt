@@ -31,4 +31,5 @@ private:
     GLuint vbo_ = 0;
     GLuint ebo_ = 0;
     GLsizei indexCount_ = 0;
+
 };

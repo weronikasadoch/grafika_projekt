@@ -3,10 +3,8 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
 #include "Renderer.h"
 #include "Scene.h"
-
 #include <iostream>
 
 namespace
@@ -45,7 +43,6 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -66,6 +63,7 @@ int main()
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     Scene scene(kWindowWidth, kWindowHeight);
     glfwSetWindowUserPointer(window, &scene);
@@ -105,6 +103,19 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        if (scene.isMenuOpen())
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+        else
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+            double mouseX = 0.0, mouseY = 0.0;
+            glfwGetCursorPos(window, &mouseX, &mouseY);
+            scene.handleMouseMovement(mouseX, mouseY);
+        }
 
         scene.processInput(window);
         renderer.render(scene);

@@ -37,6 +37,7 @@ public:
 
     glm::vec3 getCharacterPosition() const { return characterPosition_; }
     float getCharacterYaw() const { return characterYaw_; }
+    void handleMouseMovement(double xpos, double ypos);
 
 private:
     static constexpr float kCameraSpeed = 2.5f;
