@@ -13,6 +13,7 @@
 namespace
 {
     constexpr float kSandWorldYOffset = -0.95f;
+    constexpr float kSandWorldScale = 3.0f;
     constexpr float kFallbackSandHeight = -1.0f;
 
     int parseObjVertexIndex(const std::string& token)
@@ -227,6 +228,22 @@ bool Scene::isMenuOpen() const
     return menuOpen_;
 }
 
+void Scene::clearCollisionBoxes()
+{
+    collisionBoxes_.clear();
+    collisionEllipses_.clear();
+}
+
+void Scene::addCollisionBox(const glm::vec2& minBounds, const glm::vec2& maxBounds)
+{
+    collisionBoxes_.push_back({minBounds, maxBounds});
+}
+
+void Scene::addCollisionEllipse(const glm::vec2& center, const glm::vec2& radii)
+{
+    collisionEllipses_.push_back({center, radii});
+}
+
 void Scene::updateCamera()
 {
     const float totalCameraYaw = characterYaw_ + cameraYawOffset_;
@@ -250,34 +267,23 @@ glm::vec3 Scene::applyCharacterPhysics(const glm::vec3& candidatePosition) const
 {
     glm::vec3 resolved = candidatePosition;
 
-    constexpr float sandHalfExtent = 14.0f;
+    constexpr float sandHalfExtent = 14.0f * kSandWorldScale;
     resolved.x = std::clamp(resolved.x, -sandHalfExtent, sandHalfExtent);
     resolved.z = std::clamp(resolved.z, -sandHalfExtent, sandHalfExtent);
     resolved.y = getSandHeight(resolved.x, resolved.z);
 
-    resolved = resolveHouseCollisions(resolved);
+    resolved = resolveSceneCollisions(resolved);
     resolved.y = getSandHeight(resolved.x, resolved.z);
 
     return resolved;
 }
 
-glm::vec3 Scene::resolveHouseCollisions(const glm::vec3& position) const
+glm::vec3 Scene::resolveSceneCollisions(const glm::vec3& position) const
 {
-    struct CollisionBox
-    {
-        glm::vec2 minBounds;
-        glm::vec2 maxBounds;
-    };
-
-    static constexpr CollisionBox houseColliders[] = {
-        {glm::vec2(-0.69f, -4.02f), glm::vec2( 0.67f, -2.63f)},
-        {glm::vec2(-3.80f, -3.34f), glm::vec2(-2.18f, -1.85f)},
-        {glm::vec2( 2.22f, -3.72f), glm::vec2( 3.59f, -2.44f)}
-    };
     constexpr float characterRadius = 0.18f;
 
     glm::vec2 resolved(position.x, position.z);
-    for (const CollisionBox& collider : houseColliders)
+    for (const CollisionBox& collider : collisionBoxes_)
     {
         const glm::vec2 closestPoint(
             std::clamp(resolved.x, collider.minBounds.x, collider.maxBounds.x),
@@ -318,6 +324,33 @@ glm::vec3 Scene::resolveHouseCollisions(const glm::vec3& position) const
         {
             resolved.y = collider.maxBounds.y + characterRadius;
         }
+    }
+
+    for (const CollisionEllipse& collider : collisionEllipses_)
+    {
+        const glm::vec2 inflatedRadii = collider.radii + glm::vec2(characterRadius);
+        if (inflatedRadii.x <= 0.0f || inflatedRadii.y <= 0.0f)
+        {
+            continue;
+        }
+
+        glm::vec2 offset = resolved - collider.center;
+        const float normalizedDistance =
+            (offset.x * offset.x) / (inflatedRadii.x * inflatedRadii.x) +
+            (offset.y * offset.y) / (inflatedRadii.y * inflatedRadii.y);
+
+        if (normalizedDistance >= 1.0f)
+        {
+            continue;
+        }
+
+        if (glm::dot(offset, offset) < 0.0001f)
+        {
+            resolved = collider.center + glm::vec2(inflatedRadii.x, 0.0f);
+            continue;
+        }
+
+        resolved = collider.center + offset / std::sqrt(normalizedDistance);
     }
 
     return glm::vec3(resolved.x, position.y, resolved.y);
@@ -383,6 +416,8 @@ void Scene::loadSandCollisionMesh(const char* path)
         {
             glm::vec3 vertex(0.0f);
             stream >> vertex.x >> vertex.y >> vertex.z;
+            vertex.x *= kSandWorldScale;
+            vertex.z *= kSandWorldScale;
             vertices.push_back(vertex);
         }
         else if (command == "f")

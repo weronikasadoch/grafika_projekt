@@ -34,6 +34,9 @@ public:
     bool isToonShadingEnabled() const;
     bool isMenuOpen() const;
     float getSandHeight(float x, float z) const;
+    void clearCollisionBoxes();
+    void addCollisionBox(const glm::vec2& minBounds, const glm::vec2& maxBounds);
+    void addCollisionEllipse(const glm::vec2& center, const glm::vec2& radii);
 
     glm::vec3 getCharacterPosition() const { return characterPosition_; }
     float getCharacterYaw() const { return characterYaw_; }
@@ -44,7 +47,7 @@ private:
 
     void updateCamera();
     glm::vec3 applyCharacterPhysics(const glm::vec3& candidatePosition) const;
-    glm::vec3 resolveHouseCollisions(const glm::vec3& position) const;
+    glm::vec3 resolveSceneCollisions(const glm::vec3& position) const;
     void loadSandCollisionMesh(const char* path);
 
     struct SandTriangle
@@ -54,8 +57,22 @@ private:
         glm::vec3 c;
     };
 
+    struct CollisionBox
+    {
+        glm::vec2 minBounds;
+        glm::vec2 maxBounds;
+    };
+
+    struct CollisionEllipse
+    {
+        glm::vec2 center;
+        glm::vec2 radii;
+    };
+
     Camera camera_;
     std::vector<SandTriangle> sandTriangles_;
+    std::vector<CollisionBox> collisionBoxes_;
+    std::vector<CollisionEllipse> collisionEllipses_;
     int width_;
     int height_;
     float lastFrameTime_ = 0.0f;
