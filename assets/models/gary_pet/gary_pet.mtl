@@ -1,0 +1,33 @@
+# Blender 5.1.2 MTL File: 'None'
+# www.blender.org
+
+newmtl 08_-_Default
+Ns 412.111176
+Ka 0.111471 0.111471 0.111471
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd 08_-_Default_baseColor.png
+
+newmtl 09_-_Default
+Ns 173.346588
+Ka 0.306593 0.306593 0.306593
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd 09_-_Default_baseColor.png
+map_Bump -bm 0.330000 09_-_Default_normal.png
+
+newmtl 13_-_Default
+Ns 444.021057
+Ka 0.330000 0.330000 0.330000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd 13_-_Default_baseColor.png

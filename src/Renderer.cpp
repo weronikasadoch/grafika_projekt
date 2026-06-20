@@ -22,7 +22,7 @@ namespace
     constexpr float kPi = 3.14159265358979323846f;
     constexpr int kJellyfishCount = 10;
     constexpr int kCoralModelCount = 10;
-    constexpr int kCoralPlacementCount = 24;
+    constexpr int kCoralPlacementCount = 22;
     constexpr int kVisibleCoralInstanceCount = kCoralPlacementCount;
     constexpr int kVillageCount = 5;
     constexpr int kVillageHouseCount = kVillageCount * 3;
@@ -88,11 +88,9 @@ namespace
         {1, -7.6f, -0.88f, 6.8f, -28.0f, 1.0f},
         {2, -6.0f, -0.90f, 6.8f,  52.0f, 1.0f},
         {3, -4.4f, -0.88f, 6.8f,  95.0f, 1.0f},
-        {4, -2.8f, -0.88f, 6.8f, -70.0f, 1.0f},
         {5, -9.2f, -0.90f, 6.0f,  34.0f, 1.2f},
         {6, -7.6f, -0.88f, 6.0f, 142.0f, 1.2f},
         {7, -6.0f, -0.88f, 6.0f, -18.0f, 1.2f},
-        {8, -4.4f, -0.88f, 6.0f,  63.0f, 1.2f},
         {9, -2.8f, -0.88f, 8.0f, -92.0f, 1.2f},
         {6, -12.5f, -0.88f, -5.8f,  24.0f, 1.2f},
         {8,  -8.8f, -0.88f, -9.4f, -62.0f, 1.2f},
@@ -321,6 +319,7 @@ bool Renderer::initialize()
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
     const bool characterLoaded = characterModel_.loadFromObj("assets/models/Spongebob_model/spongebob_model.obj");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
+    const bool garrLoaded = garyModel_.loadFromObj("assets/models/gary_pet/gary_pet.obj");
     const bool coral1Loaded = coral1Model_.loadFromObj("assets/models/coral_rock/coral_1.obj");
     const bool coral2Loaded = coral2Model_.loadFromObj("assets/models/coral_rock/coral_2.obj");
     const bool coral3Loaded = coral3Model_.loadFromObj("assets/models/coral_rock/coral_3.obj");
@@ -331,9 +330,11 @@ bool Renderer::initialize()
     const bool coral8Loaded = coral8Model_.loadFromObj("assets/models/coral_rock/coral_8.obj");
     const bool coral9Loaded = coral9Model_.loadFromObj("assets/models/coral_rock/coral_9.obj");
     const bool coral10Loaded = coral10Model_.loadFromObj("assets/models/coral_rock/coral_10.obj");
+    const bool bubbleLoaded = bubbleModel_.loadFromObj("assets/models/sphere.obj");
 
-    const bool spongebobTextureLoaded = spongebobTexture_.loadPPM("assets/models/Spongebob_model/spongebob.ppm");
+    const bool spongebobTextureLoaded = spongebobTexture_.loadImage("assets/models/Spongebob_model/Sponge_baseColor.png");
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
+
     const bool skyboxResourcesCreated = createSkyboxResources();
     const bool shadowResourcesCreated = createShadowResources();
     glGenBuffers(1, &coralInstanceVbo_);
@@ -345,6 +346,7 @@ bool Renderer::initialize()
         squidwardLoaded &&
         characterLoaded &&
         jellyfishLoaded &&
+        garrLoaded &&
         coral1Loaded &&
         coral2Loaded &&
         coral3Loaded &&
@@ -355,6 +357,7 @@ bool Renderer::initialize()
         coral8Loaded &&
         coral9Loaded &&
         coral10Loaded &&
+        bubbleLoaded &&
         spongebobTextureLoaded &&
         skyboxResourcesCreated &&
         shadowResourcesCreated &&
@@ -382,10 +385,9 @@ void Renderer::render(Scene& scene)
     float charYaw = scene.getCharacterYaw();
 
     glm::mat4 characterModel = glm::mat4(1.0f);
-    characterModel = glm::translate(characterModel, charPos); // <-- Tutaj aplikujemy ruch!
-    //characterModel = glm::rotate(characterModel, -charYaw - glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // Obrót
+    characterModel = glm::translate(characterModel, charPos);
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    characterModel = glm::scale(characterModel, glm::vec3(0.45f));
+    characterModel = glm::scale(characterModel, glm::vec3(0.15f));
     if (jellyfishCount > kLightJellyfishIndex)
     {
         pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, scene.getJellyfishAnimationTime(kLightJellyfishIndex)) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
@@ -396,15 +398,15 @@ void Renderer::render(Scene& scene)
         pointLightIntensity_ = 0.0f;
     }
 
-    //const glm::mat4 characterModel = glm::scale(
-      //  glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -1.0f)),
-        //glm::vec3(0.45f)
-    //);
+    const glm::mat4 garyModel = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.5f, -1.0f, -1.0f)),
+        glm::vec3(0.001f)
+    );
 
     renderShadowMap(lightSpace, spongebobTransform_, patrickTransform_, squidwardTransform_, characterModel, scene, jellyfishCount);
 
     glViewport(0, 0, static_cast<GLsizei>(scene.getFramebufferWidth()), static_cast<GLsizei>(scene.getFramebufferHeight()));
-    glClearColor(0.01f, 0.12f, 0.20f, 1.0f);
+    glClearColor(0.05f, 0.35f, 0.50f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     renderSkybox(view, projection);
 
@@ -418,12 +420,26 @@ void Renderer::render(Scene& scene)
     renderModel(squidwardModel_, squidwardTransform_, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f, false, &scene, 0.0f, 0.85f);
     renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
     renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, scene.isToonShadingEnabled(), &spongebobTexture_, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
+    renderModel(garyModel_,garyModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
+
     for (int i = 0; i < jellyfishCount; ++i)
     {
         const bool isLightSource = i == kLightJellyfishIndex;
         const glm::vec3 jellyfishColor = isLightSource ? glm::vec3(0.45f, 0.95f, 1.0f) : glm::vec3(1.0f, 0.42f, 0.78f);
         renderModel(jellyfishModel_, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)), view, projection, lightSpace, jellyfishColor, smallModelOutlineThickness, isLightSource ? 2.2f : 1.6f, scene.isToonShadingEnabled(), nullptr, false, isLightSource, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, isLightSource ? 0.18f : 0.35f);
     }
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Standardowe mieszanie dla szkła/powietrza
+    glDepthMask(GL_FALSE);
+    for (const auto& bubble : scene.getBubbles())
+    {
+        glm::mat4 bubbleTransform = glm::mat4(1.0f);
+        bubbleTransform = glm::translate(bubbleTransform, bubble.position);
+        bubbleTransform = glm::scale(bubbleTransform, glm::vec3(bubble.size));
+        renderModel(bubbleModel_, bubbleTransform, view, projection, lightSpace, glm::vec3(0.5, 0.95, 0.98), 0.0f, 2.5f, false, nullptr, false, false, glm::vec3(0.5f, 0.7f, 0.8f), 0.1f, 0.02f, false);
+    }
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
 }
 
 void Renderer::shutdown()
@@ -449,6 +465,8 @@ void Renderer::shutdown()
     spongebobModel_.destroy();
     sandModel_.destroy();
     characterModel_.destroy();
+    garyModel_.destroy();
+    bubbleModel_.destroy();
     glDeleteProgram(skyboxProgram_);
     glDeleteProgram(shadowProgram_);
     glDeleteProgram(outlineProgram_);
@@ -503,7 +521,7 @@ bool Renderer::createUnderwaterCubemap()
 {
     constexpr int size = 768;
     constexpr int channels = 3;
-    std::array<unsigned char, size * size * channels> pixels = {};
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(size * size * channels), 0);
     const std::array<std::vector<float>, 6> flowerMasks = {
         createFlowerMask("assets/models/flowers/flower_1.obj", size),
         createFlowerMask("assets/models/flowers/flower_3.obj", size),
@@ -542,9 +560,9 @@ bool Renderer::createUnderwaterCubemap()
                 const float waveLines = std::sin((direction.x * 16.0f + direction.z * 9.0f) + std::sin(direction.z * 18.0f) * 0.7f);
                 const float caustics = std::max(waveLines, 0.0f) * surfaceLight * surfaceLight;
 
-                glm::vec3 deepColor(0.005f, 0.08f, 0.13f);
-                glm::vec3 midColor(0.02f, 0.26f, 0.34f);
-                glm::vec3 surfaceColor(0.22f, 0.72f, 0.78f);
+                glm::vec3 deepColor(0.05f, 0.35f, 0.55f);
+                glm::vec3 midColor(0.10f, 0.55f, 0.70f);
+                glm::vec3 surfaceColor(0.40f, 0.85f, 0.90f);
                 glm::vec3 color = glm::mix(deepColor, midColor, height);
                 color = glm::mix(color, surfaceColor, surfaceLight * 0.55f);
                 color += glm::vec3(0.05f, 0.18f, 0.16f) * caustics;
@@ -552,7 +570,7 @@ bool Renderer::createUnderwaterCubemap()
                 if (!flowerMasks.empty())
                 {
                     static constexpr float panelCenters[] = {0.22f, 0.34f, 0.46f, 0.58f, 0.70f, 0.82f};
-                    static constexpr glm::vec3 panelColors[] = {
+                    static const glm::vec3 panelColors[] = {
                         glm::vec3(0.98f, 0.78f, 0.28f),
                         glm::vec3(0.95f, 0.25f, 0.52f),
                         glm::vec3(0.20f, 0.95f, 0.78f),
@@ -560,6 +578,7 @@ bool Renderer::createUnderwaterCubemap()
                         glm::vec3(0.98f, 0.40f, 0.18f),
                         glm::vec3(0.72f, 0.98f, 0.30f)
                     };
+
                     constexpr float panelWidth = 0.095f;
                     constexpr float panelMinY = -0.08f;
                     constexpr float panelMaxY = 0.12f;
@@ -693,7 +712,7 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
         setVec3(pbrUniforms_.baseColor, baseColor);
         setVec3(pbrUniforms_.cameraPosition, glm::vec3(glm::inverse(view)[3]));
         setVec3(pbrUniforms_.lightDirection, kLightDirection);
-        setVec3(pbrUniforms_.lightColor, glm::vec3(1.25f, 1.38f, 1.32f));
+        setVec3(pbrUniforms_.lightColor, glm::vec3(2.0f, 2.2f, 2.1f));
         setVec3(pbrUniforms_.ambientColor, ambientColor);
         setInt(pbrUniforms_.useMaterialColor, useMaterialColor ? 1 : 0);
         setInt(pbrUniforms_.useDiffuseTexture, diffuseTexture != nullptr ? 1 : 0);
@@ -764,7 +783,8 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
     }
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
-    
+
+
     assetModel.draw();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -1225,17 +1245,17 @@ glm::mat4 Renderer::createCoralTransform(int index, const Scene& scene) const
 
 glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
 {
-    static constexpr glm::vec3 basePositions[kJellyfishCount] = {
-        glm::vec3(-4.6f, -0.45f, -4.7f),
-        glm::vec3(-2.8f, -0.20f, -5.8f),
-        glm::vec3(-1.1f,  0.05f, -4.3f),
-        glm::vec3( 1.4f, -0.10f, -5.5f),
-        glm::vec3( 3.4f, -0.35f, -4.4f),
-        glm::vec3( 4.7f,  0.10f, -2.2f),
-        glm::vec3( 2.6f,  0.28f, -0.5f),
-        glm::vec3( 0.0f,  0.02f, -0.2f),
-        glm::vec3(-2.4f,  0.20f, -1.2f),
-        glm::vec3(-4.2f, -0.15f, -2.6f)
+    static const glm::vec3 basePositions[kJellyfishCount] = {
+    glm::vec3(-4.6f, -0.45f, -4.7f),
+    glm::vec3(-2.8f, -0.20f, -5.8f),
+    glm::vec3(-1.1f,  0.05f, -4.3f),
+    glm::vec3(1.4f, -0.10f, -5.5f),
+    glm::vec3(3.4f, -0.35f, -4.4f),
+    glm::vec3(4.7f,  0.10f, -2.2f),
+    glm::vec3(2.6f,  0.28f, -0.5f),
+    glm::vec3(0.0f,  0.02f, -0.2f),
+    glm::vec3(-2.4f,  0.20f, -1.2f),
+    glm::vec3(-4.2f, -0.15f, -2.6f)
     };
     static constexpr float radii[kJellyfishCount] = {0.55f, 0.42f, 0.62f, 0.48f, 0.58f, 0.38f, 0.52f, 0.44f, 0.60f, 0.46f};
     static constexpr float speeds[kJellyfishCount] = {0.82f, 0.64f, 0.74f, 0.91f, 0.57f, 0.86f, 0.69f, 0.78f, 0.61f, 0.73f};
@@ -1250,13 +1270,18 @@ glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
     const glm::vec3 position = basePositions[i] + glm::vec3(x, y, z);
     const float yaw = std::atan2(std::cos(t * 0.82f) * radii[i] * 0.82f, -std::sin(t) * radii[i]);
     const float tilt = glm::radians(5.0f) * pulse;
-    const float scale = 0.54f + 0.035f * pulse;
+    const float baseWidth = 0.48f;
+    const float baseHeight = 0.22f;
+    const float scaleX = baseWidth * (1.0f + 0.08f * std::max(0.0f, pulse));
+    const float scaleY = baseHeight * (1.0f - 0.20f * std::abs(pulse));
+    const float scaleZ = baseWidth * (1.0f + 0.08f * std::max(0.0f, pulse));
+
 
     glm::mat4 model(1.0f);
     model = glm::translate(model, position);
     model = glm::rotate(model, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, tilt, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(scale, scale * (1.0f - 0.05f * pulse), scale));
+    model = glm::scale(model, glm::vec3(scaleX, scaleY, scaleZ));
     return model;
 }
 

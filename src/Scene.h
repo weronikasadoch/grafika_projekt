@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Camera.h"
-
+#include <glm.hpp>
 #include <array>
 #include <vector>
 
@@ -16,7 +16,7 @@ public:
     static constexpr int kMaxJellyfishCount = 10;
 
     Scene(int width, int height);
-
+    ~Scene();
     void updateFramebufferSize(int width, int height);
     void processInput(GLFWwindow* window);
     void updateDeltaTime(float currentFrameTime);
@@ -40,6 +40,17 @@ public:
 
     glm::vec3 getCharacterPosition() const { return characterPosition_; }
     float getCharacterYaw() const { return characterYaw_; }
+    void handleMouseMovement(double xpos, double ypos);
+    struct Bubble
+    {
+        glm::vec3 position;
+        float speed;
+        float size;
+        float wobbleSpeed;
+        float wobbleTime;
+    };
+    const std::vector<Bubble>& getBubbles() const { return bubbles_; }
+    
 
 private:
     static constexpr float kCameraSpeed = 2.5f;
@@ -78,7 +89,7 @@ private:
     float lastFrameTime_ = 0.0f;
     float deltaTime_ = 0.0f;
     float outlineThickness_ = 0.05f;
-    float cameraYawOffset_ = 0.0f; // Dodatkowy obrót kamery wokół postaci
+    float cameraYawOffset_ = 0.0f; 
     float cameraHeightAbove_ = 1.0f;
 
 
@@ -91,4 +102,8 @@ private:
     glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, -1.0f); 
     float characterYaw_ = -90.0f;
     float cameraDistance_ = 2.5f;
+    std::vector<Bubble> bubbles_;
+    float bubbleSpawnTimer_ = 0.0f;
+    struct ma_engine* audioEngine_ = nullptr;
+    struct ma_sound* backgroundMusic_ = nullptr;
 };

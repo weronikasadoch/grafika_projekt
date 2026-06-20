@@ -143,7 +143,7 @@ private:
     GLuint coralInstanceVbo_ = 0;
     GLuint shadowFbo_ = 0;
     GLuint shadowDepthTexture_ = 0;
-    std::array<glm::mat4, 24> coralTransforms_ = {};
+    std::array<glm::mat4, 22> coralTransforms_ = {};
     std::array<glm::mat4, 15> villageHouseTransforms_ = {};
     std::array<glm::mat4, 25> villageCoralTransforms_ = {};
     glm::mat4 spongebobTransform_ = glm::mat4(1.0f);
@@ -156,6 +156,8 @@ private:
     Model squidwardModel_;
     Model characterModel_;
     Model jellyfishModel_;
+    Model garyModel_;
+    Model bubbleModel_;
     Model coral1Model_;
     Model coral2Model_;
     Model coral3Model_;
@@ -168,4 +170,5 @@ private:
     Model coral10Model_;
     Texture spongebobFallbackTexture_;
     Texture spongebobTexture_;
+
 };

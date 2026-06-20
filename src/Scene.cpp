@@ -1,3 +1,7 @@
+#define NOMINMAX
+
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
 #include "Scene.h"
 
 #include <GLFW/glfw3.h>
@@ -29,6 +33,16 @@ Scene::Scene(int width, int height)
       height_(height)
 {
     loadSandCollisionMesh("assets/models/scene/sand.obj");
+    audioEngine_ = new ma_engine();
+
+    if (ma_engine_init(NULL, audioEngine_) == MA_SUCCESS)
+    {
+        backgroundMusic_ = new ma_sound();
+        if (ma_sound_init_from_file(audioEngine_, "assets/music.mp3", 0x00000003, NULL, NULL, backgroundMusic_) == MA_SUCCESS)
+        {
+            ma_sound_start(backgroundMusic_);
+        }
+    }
 }
 
 void Scene::updateFramebufferSize(int width, int height)
@@ -122,6 +136,44 @@ void Scene::updateDeltaTime(float currentFrameTime)
         for (int i = 0; i < visibleJellyfishCount; ++i)
         {
             jellyfishAnimationTimes_[static_cast<std::size_t>(i)] += deltaTime_;
+        }
+    }
+    bubbleSpawnTimer_ += deltaTime_;
+    if (bubbleSpawnTimer_ >= 0.3f)
+    {
+        bubbleSpawnTimer_ = 0.0f;
+        if (bubbles_.size() < 40)
+        {
+            Bubble newBubble;
+
+
+            float randomX = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
+            float randomZ = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
+            float startY = getSandHeight(randomX, randomZ);
+
+            newBubble.position = glm::vec3(randomX, startY, randomZ);
+            newBubble.speed = 1.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 1.5f);
+            float randomFraction = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            newBubble.size = 0.05f + randomFraction * (0.15f - 0.02f);
+            newBubble.wobbleSpeed = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 4.0f);
+            newBubble.wobbleTime = static_cast<float>(rand());
+
+            bubbles_.push_back(newBubble);
+        }
+    }
+    for (auto it = bubbles_.begin(); it != bubbles_.end(); )
+    {
+        it->wobbleTime += deltaTime_ * it->wobbleSpeed;
+        it->position.y += it->speed * deltaTime_;
+        it->position.x += std::sin(it->wobbleTime) * 0.3f * deltaTime_;
+        it->position.z += std::cos(it->wobbleTime) * 0.3f * deltaTime_;
+        if (it->position.y > 8.0f)
+        {
+            it = bubbles_.erase(it);
+        }
+        else
+        {
+            ++it;
         }
     }
 }
@@ -447,5 +499,50 @@ void Scene::loadSandCollisionMesh(const char* path)
                 });
             }
         }
+    }
+}
+void Scene::handleMouseMovement(double xpos, double ypos)
+{
+    if (menuOpen_) return;
+
+    static float lastX = static_cast<float>(width_) * 0.5f;
+    static float lastY = static_cast<float>(height_) * 0.5f;
+    static bool firstMouse = true;
+
+    if (firstMouse)
+    {
+        lastX = static_cast<float>(xpos);
+        lastY = static_cast<float>(ypos);
+        firstMouse = false;
+    }
+
+    float xoffset = static_cast<float>(xpos) - lastX;
+    float yoffset = lastY - static_cast<float>(ypos);
+
+    lastX = static_cast<float>(xpos);
+    lastY = static_cast<float>(ypos);
+
+    constexpr float sensitivity = 0.005f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity * 2.0f;
+
+    cameraYawOffset_ -= xoffset;
+
+    cameraHeightAbove_ = std::clamp(cameraHeightAbove_ + yoffset, -5.0f, 10.0f);
+}
+
+Scene::~Scene()
+{
+    if (backgroundMusic_)
+    {
+        ma_sound_uninit(backgroundMusic_);
+        delete backgroundMusic_;
+        backgroundMusic_ = nullptr;
+    }
+    if (audioEngine_)
+    {
+        ma_engine_uninit(audioEngine_);
+        delete audioEngine_;
+        audioEngine_ = nullptr;
     }
 }

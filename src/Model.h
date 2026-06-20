@@ -8,6 +8,7 @@
 class Texture
 {
 public:
+    bool loadImage(const std::string& path);
     bool loadPPM(const std::string& path);
     void createSolidColor(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255);
     void bind(GLenum textureUnit) const;
@@ -38,4 +39,5 @@ private:
     GLsizei indexCount_ = 0;
     glm::vec3 minBounds_ = glm::vec3(0.0f);
     glm::vec3 maxBounds_ = glm::vec3(0.0f);
+
 };

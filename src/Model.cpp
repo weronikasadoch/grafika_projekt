@@ -1,6 +1,7 @@
 #include "Model.h"
 
 #include <algorithm>
+
 #include <array>
 #include <cstddef>
 #include <fstream>
@@ -9,6 +10,9 @@
 #include <map>
 #include <sstream>
 #include <vector>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 namespace
 {
@@ -101,6 +105,24 @@ namespace
         glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
+}
+
+bool Texture::loadImage(const std::string& path)
+{
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    stbi_uc* pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    if (pixels == nullptr || width <= 0 || height <= 0)
+    {
+        std::cerr << "Failed to load image texture: " << path << '\n';
+        stbi_image_free(pixels);
+        return false;
+    }
+
+    uploadTexture(texture_, width, height, GL_RGBA, pixels);
+    stbi_image_free(pixels);
+    return true;
 }
 
 bool Texture::loadPPM(const std::string& path)
