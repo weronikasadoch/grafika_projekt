@@ -327,7 +327,7 @@ void Renderer::render(const Scene& scene)
 
     const glm::mat4 sand = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.95f, 0.0f));
     const glm::mat4 spongebobModel = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.90f, -3.0f)),
+        glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, -2.7)),
         glm::vec3(0.45f)
     );
     const glm::mat4 patrickModel = glm::scale(
@@ -335,7 +335,7 @@ void Renderer::render(const Scene& scene)
         glm::vec3(0.45f)
     );
     const glm::mat4 squidwardModel = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.20f, -2.6f)),
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -2.6f)),
         glm::vec3(0.45f)
     );
     glm::vec3 charPos = scene.getCharacterPosition();
@@ -963,13 +963,37 @@ glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
     const glm::vec3 position = basePositions[i] + glm::vec3(x, y, z);
     const float yaw = std::atan2(std::cos(t * 0.82f) * radii[i] * 0.82f, -std::sin(t) * radii[i]);
     const float tilt = glm::radians(5.0f) * pulse;
+    /*
     const float scale = 0.54f + 0.035f * pulse;
+
 
     glm::mat4 model(1.0f);
     model = glm::translate(model, position);
     model = glm::rotate(model, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, tilt, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, glm::vec3(scale, scale * (1.0f - 0.05f * pulse), scale));
+    */
+    const float baseWidth = 0.48f;
+    const float baseHeight = 0.22f;
+    //const float baseScale = 0.24f;
+
+    // Gdy 'pulse' rośnie (sinus idzie w górę):
+    // - Wysokość (Y) maleje (kurczy się w pionie) -> 1.0f - 0.20f * pulse
+    // - Szerokość (X, Z) delikatnie rośnie (puchnie na boki) -> 1.0f + 0.08f * pulse
+    // Możesz modyfikować wartości 0.20f i 0.08f, aby wzmocnić lub osłabić ten efekt.
+   // const float scaleX = baseScale * (1.0f + 0.08f * std::max(0.0f, pulse));
+    //const float scaleY = baseScale * (1.0f - 0.20f * std::abs(pulse));
+    //const float scaleZ = baseScale * (1.0f + 0.08f * std::max(0.0f, pulse));
+    const float scaleX = baseWidth * (1.0f + 0.08f * std::max(0.0f, pulse));
+    const float scaleY = baseHeight * (1.0f - 0.20f * std::abs(pulse));
+    const float scaleZ = baseWidth * (1.0f + 0.08f * std::max(0.0f, pulse));
+
+
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, position);
+    model = glm::rotate(model, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, tilt, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(scaleX, scaleY, scaleZ));
     return model;
 }
 
