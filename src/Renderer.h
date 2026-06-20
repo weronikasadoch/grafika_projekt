@@ -145,6 +145,7 @@ private:
     Model squidwardModel_;
     Model characterModel_;
     Model jellyfishModel_;
+    Model garyModel_;
     Model rockModel_;
     Model coral1Model_;
     Model coral2Model_;

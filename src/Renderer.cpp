@@ -270,6 +270,7 @@ bool Renderer::initialize()
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
     const bool characterLoaded = characterModel_.loadFromObj("assets/models/Spongebob_model/spongebob_model.obj");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
+    const bool garrLoaded = garyModel_.loadFromObj("assets/models/gary_pet/gary_pet.obj");
     const bool rockLoaded = rockModel_.loadFromObj("assets/models/coral_rock/rock.obj");
     const bool coral1Loaded = coral1Model_.loadFromObj("assets/models/coral_rock/coral_1.obj");
     const bool coral2Loaded = coral2Model_.loadFromObj("assets/models/coral_rock/coral_2.obj");
@@ -355,6 +356,11 @@ void Renderer::render(const Scene& scene)
         pointLightIntensity_ = 0.0f;
     }
 
+    const glm::mat4 garyModel = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(2.5f, -1.0f, -1.0f)),
+        glm::vec3(0.001f)
+    );
+
 
     renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel, scene, jellyfishCount);
 
@@ -373,6 +379,7 @@ void Renderer::render(const Scene& scene)
     renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f);
     renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
     renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f),smallModelOutlineThickness,1.4f, scene.isToonShadingEnabled(), &spongebobFallbackTexture_,false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
+    renderModel(garyModel_,garyModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
     for (int i = 0; i < jellyfishCount; ++i)
     {
         const bool isLightSource = i == kLightJellyfishIndex;
@@ -405,6 +412,7 @@ void Renderer::shutdown()
     spongebobModel_.destroy();
     sandModel_.destroy();
     characterModel_.destroy();
+    garyModel_.destroy();
     glDeleteProgram(skyboxProgram_);
     glDeleteProgram(shadowProgram_);
     glDeleteProgram(outlineProgram_);
