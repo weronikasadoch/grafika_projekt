@@ -282,6 +282,7 @@ bool Renderer::initialize()
     const bool coral8Loaded = coral8Model_.loadFromObj("assets/models/coral_rock/coral_8.obj");
     const bool coral9Loaded = coral9Model_.loadFromObj("assets/models/coral_rock/coral_9.obj");
     const bool coral10Loaded = coral10Model_.loadFromObj("assets/models/coral_rock/coral_10.obj");
+    const bool bubbleLoaded = bubbleModel_.loadFromObj("assets/models/sphere.obj");
 
     const bool spongebobTextureLoaded = true;
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
@@ -361,6 +362,10 @@ void Renderer::render(const Scene& scene)
         glm::vec3(0.001f)
     );
 
+    glm::mat4 bubbleTransform = glm::mat4(1.0f);
+    bubbleTransform = glm::translate(bubbleTransform, glm::vec3(0.0f, 1.5f, 0.0f)); // Pozycja X, Y, Z
+    bubbleTransform = glm::scale(bubbleTransform, glm::vec3(0.1f));
+
 
     renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel, scene, jellyfishCount);
 
@@ -372,7 +377,7 @@ void Renderer::render(const Scene& scene)
     const float outlineThickness = scene.getOutlineThickness();
     const float smallModelOutlineThickness = outlineThickness * 0.32f;
 
-    renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), 0.0f, 0.92f, false, nullptr, true, false, glm::vec3(0.04f, 0.12f, 0.13f), 0.0f, 0.96f, true);
+    renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.878f, 0.890f, 0.741f), 0.0f, 0.92f, false, nullptr, false, false, glm::vec3(0.04f, 0.12f, 0.13f), 0.0f, 0.96f, true);
     renderModel(rockModel_, rockTransform_, view, projection, lightSpace, glm::vec3(0.38f, 0.33f, 0.29f), 0.0f, 1.15f, false, nullptr, true, false, glm::vec3(0.10f, 0.18f, 0.19f), 0.0f, 0.88f);
     renderCoralsInstanced(view, projection, lightSpace);
     renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f);
@@ -386,6 +391,18 @@ void Renderer::render(const Scene& scene)
         const glm::vec3 jellyfishColor = isLightSource ? glm::vec3(0.45f, 0.95f, 1.0f) : glm::vec3(1.0f, 0.42f, 0.78f);
         renderModel(jellyfishModel_, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)), view, projection, lightSpace, jellyfishColor, smallModelOutlineThickness, isLightSource ? 2.2f : 1.6f, scene.isToonShadingEnabled(), nullptr, false, isLightSource, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, isLightSource ? 0.18f : 0.35f);
     }
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Standardowe mieszanie dla szkła/powietrza
+    glDepthMask(GL_FALSE);
+    for (const auto& bubble : scene.getBubbles())
+    {
+        glm::mat4 bubbleTransform = glm::mat4(1.0f);
+        bubbleTransform = glm::translate(bubbleTransform, bubble.position);
+        bubbleTransform = glm::scale(bubbleTransform, glm::vec3(bubble.size));
+        renderModel(bubbleModel_, bubbleTransform, view, projection, lightSpace, glm::vec3(0.5, 0.95, 0.98), 0.0f, 2.5f, false, nullptr, false, false, glm::vec3(0.5f, 0.7f, 0.8f), 0.1f, 0.02f, false);
+    }
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
 }
 
 void Renderer::shutdown()
@@ -413,6 +430,7 @@ void Renderer::shutdown()
     sandModel_.destroy();
     characterModel_.destroy();
     garyModel_.destroy();
+    bubbleModel_.destroy();
     glDeleteProgram(skyboxProgram_);
     glDeleteProgram(shadowProgram_);
     glDeleteProgram(outlineProgram_);

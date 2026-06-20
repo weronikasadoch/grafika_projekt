@@ -146,6 +146,7 @@ private:
     Model characterModel_;
     Model jellyfishModel_;
     Model garyModel_;
+    Model bubbleModel_;
     Model rockModel_;
     Model coral1Model_;
     Model coral2Model_;
@@ -159,4 +160,5 @@ private:
     Model coral10Model_;
     Texture spongebobFallbackTexture_;
     Texture spongebobTexture_;
+
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Camera.h"
-
+#include <glm.hpp>
 #include <array>
 #include <vector>
 
@@ -38,6 +38,18 @@ public:
     glm::vec3 getCharacterPosition() const { return characterPosition_; }
     float getCharacterYaw() const { return characterYaw_; }
     void handleMouseMovement(double xpos, double ypos);
+    struct Bubble
+    {
+        glm::vec3 position;
+        float speed;
+        float size;
+        float wobbleSpeed;
+        float wobbleTime;
+    };
+
+    // 2. DOPIERO POD NIĄ DAJEMY FUNKCJĘ, KTÓRA JEJ UŻYWA:
+    const std::vector<Bubble>& getBubbles() const { return bubbles_; }
+    
 
 private:
     static constexpr float kCameraSpeed = 2.5f;
@@ -75,4 +87,7 @@ private:
     glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, -1.0f); 
     float characterYaw_ = -90.0f;
     float cameraDistance_ = 2.5f;
+    std::vector<Bubble> bubbles_;
+    float bubbleSpawnTimer_ = 0.0f;
+   
 };

@@ -106,6 +106,51 @@ void Scene::updateDeltaTime(float currentFrameTime)
             jellyfishAnimationTimes_[static_cast<std::size_t>(i)] += deltaTime_;
         }
     }
+    bubbleSpawnTimer_ += deltaTime_;
+    if (bubbleSpawnTimer_ >= 0.3f) 
+    {
+        bubbleSpawnTimer_ = 0.0f;
+        if (bubbles_.size() < 40) 
+        {
+            Bubble newBubble;
+            
+
+            float randomX = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
+            float randomZ = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
+            float startY = getSandHeight(randomX, randomZ);
+
+            newBubble.position = glm::vec3(randomX, startY, randomZ);
+            newBubble.speed = 1.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 1.5f); 
+            //newBubble.size = 0.05f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 0.15f);
+            float randomFraction = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            newBubble.size = 0.05f + randomFraction * (0.15f - 0.02f);
+            newBubble.wobbleSpeed = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 4.0f);
+            newBubble.wobbleTime = static_cast<float>(rand());
+
+            bubbles_.push_back(newBubble);
+        }
+    }
+    for (auto it = bubbles_.begin(); it != bubbles_.end(); )
+    {
+        it->wobbleTime += deltaTime_ * it->wobbleSpeed;
+
+        // Unoszenie w górę (oś Y)
+        it->position.y += it->speed * deltaTime_;
+
+        // Efekt sinusoidalnego falowania pod wodą na boki (X i Z)
+        it->position.x += std::sin(it->wobbleTime) * 0.3f * deltaTime_;
+        it->position.z += std::cos(it->wobbleTime) * 0.3f * deltaTime_;
+        
+        // Jeśli bąbelek poleci za wysoko (np. do powierzchni wody Y=8.0), usuwamy go
+        if (it->position.y > 8.0f)
+        {
+            it = bubbles_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 void Scene::renderUi(GLFWwindow* window)
