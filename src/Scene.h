@@ -16,7 +16,7 @@ public:
     static constexpr int kMaxJellyfishCount = 10;
 
     Scene(int width, int height);
-
+    ~Scene();
     void updateFramebufferSize(int width, int height);
     void processInput(GLFWwindow* window);
     void updateDeltaTime(float currentFrameTime);
@@ -46,8 +46,6 @@ public:
         float wobbleSpeed;
         float wobbleTime;
     };
-
-    // 2. DOPIERO POD NIĄ DAJEMY FUNKCJĘ, KTÓRA JEJ UŻYWA:
     const std::vector<Bubble>& getBubbles() const { return bubbles_; }
     
 
@@ -74,7 +72,7 @@ private:
     float lastFrameTime_ = 0.0f;
     float deltaTime_ = 0.0f;
     float outlineThickness_ = 0.05f;
-    float cameraYawOffset_ = 0.0f; // Dodatkowy obrót kamery wokół postaci
+    float cameraYawOffset_ = 0.0f; 
     float cameraHeightAbove_ = 1.0f;
 
 
@@ -89,5 +87,6 @@ private:
     float cameraDistance_ = 2.5f;
     std::vector<Bubble> bubbles_;
     float bubbleSpawnTimer_ = 0.0f;
-   
+    struct ma_engine* audioEngine_ = nullptr;
+    struct ma_sound* backgroundMusic_ = nullptr;
 };

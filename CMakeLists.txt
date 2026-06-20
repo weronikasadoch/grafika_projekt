@@ -39,6 +39,7 @@ target_include_directories(grafika_projekt PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/glm"
     "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui"
     "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/backends"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies"
 )
 
 find_package(OpenGL REQUIRED)
@@ -48,6 +49,7 @@ if(WIN32)
     target_include_directories(grafika_projekt PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/glew-2.0.0/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/glfw-3.3.8.bin.WIN64/include"
+
     )
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)

@@ -1,3 +1,7 @@
+#define NOMINMAX
+
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
 #include "Scene.h"
 
 #include <GLFW/glfw3.h>
@@ -28,6 +32,16 @@ Scene::Scene(int width, int height)
       height_(height)
 {
     loadSandCollisionMesh("assets/models/scene/sand.obj");
+    audioEngine_ = new ma_engine();
+    
+    if (ma_engine_init(NULL, audioEngine_) == MA_SUCCESS)
+    {
+        backgroundMusic_ = new ma_sound();
+        if (ma_sound_init_from_file(audioEngine_, "assets/music.mp3", 0x00000003, NULL, NULL, backgroundMusic_) == MA_SUCCESS)
+        {
+            ma_sound_start(backgroundMusic_);
+        }
+    }
 }
 
 void Scene::updateFramebufferSize(int width, int height)
@@ -121,7 +135,6 @@ void Scene::updateDeltaTime(float currentFrameTime)
 
             newBubble.position = glm::vec3(randomX, startY, randomZ);
             newBubble.speed = 1.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 1.5f); 
-            //newBubble.size = 0.05f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 0.15f);
             float randomFraction = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
             newBubble.size = 0.05f + randomFraction * (0.15f - 0.02f);
             newBubble.wobbleSpeed = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 4.0f);
@@ -133,15 +146,9 @@ void Scene::updateDeltaTime(float currentFrameTime)
     for (auto it = bubbles_.begin(); it != bubbles_.end(); )
     {
         it->wobbleTime += deltaTime_ * it->wobbleSpeed;
-
-        // Unoszenie w górę (oś Y)
         it->position.y += it->speed * deltaTime_;
-
-        // Efekt sinusoidalnego falowania pod wodą na boki (X i Z)
         it->position.x += std::sin(it->wobbleTime) * 0.3f * deltaTime_;
         it->position.z += std::cos(it->wobbleTime) * 0.3f * deltaTime_;
-        
-        // Jeśli bąbelek poleci za wysoko (np. do powierzchni wody Y=8.0), usuwamy go
         if (it->position.y > 8.0f)
         {
             it = bubbles_.erase(it);
@@ -471,4 +478,20 @@ void Scene::handleMouseMovement(double xpos, double ypos)
     cameraYawOffset_ -= xoffset;
 
     cameraHeightAbove_ = std::clamp(cameraHeightAbove_ + yoffset, -5.0f, 10.0f);
+}
+
+Scene::~Scene()
+{
+    if (backgroundMusic_)
+    {
+        ma_sound_uninit(backgroundMusic_);
+        delete backgroundMusic_;
+        backgroundMusic_ = nullptr;
+    }
+    if (audioEngine_)
+    {
+        ma_engine_uninit(audioEngine_);
+        delete audioEngine_;
+        audioEngine_ = nullptr;
+    }
 }
