@@ -53,6 +53,13 @@ Scene::Scene(int width, int height)
         {
             ma_sound_start(backgroundMusic_);
         }
+
+        taskStartSound_ = new ma_sound();
+        if (ma_sound_init_from_file(audioEngine_, "assets/voice_lines/spongebob-task-start.mp3", 0, NULL, NULL, taskStartSound_) != MA_SUCCESS)
+        {
+            delete taskStartSound_;
+            taskStartSound_ = nullptr;
+        }
     }
 }
 
@@ -148,11 +155,17 @@ void Scene::processInput(GLFWwindow* window)
             if (glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius)
             {
                 jellyfishQuestStarted_ = true;
+                jellyfishQuestIntroFinished_ = taskStartSound_ == nullptr;
                 playerJellyFishCount_ = 0;
-                collectibleJellyfishActive_.fill(true);
+                collectibleJellyfishActive_.fill(jellyfishQuestIntroFinished_);
+                if (taskStartSound_ != nullptr)
+                {
+                    ma_sound_seek_to_pcm_frame(taskStartSound_, 0);
+                    ma_sound_start(taskStartSound_);
+                }
             }
         }
-        else if (playerJellyFishCount_ < kCollectibleJellyfishCount)
+        else if (jellyfishQuestIntroFinished_ && playerJellyFishCount_ < kCollectibleJellyfishCount)
         {
             for (int i = 0; i < kCollectibleJellyfishCount; ++i)
             {
@@ -200,6 +213,11 @@ void Scene::updateDeltaTime(float currentFrameTime)
         {
             jellyfishAnimationTimes_[static_cast<std::size_t>(i)] += deltaTime_;
         }
+    }
+    if (jellyfishQuestStarted_ && !jellyfishQuestIntroFinished_ && taskStartSound_ != nullptr && ma_sound_at_end(taskStartSound_))
+    {
+        jellyfishQuestIntroFinished_ = true;
+        collectibleJellyfishActive_.fill(true);
     }
     bubbleSpawnTimer_ += deltaTime_;
     if (bubbleSpawnTimer_ >= 0.3f)
@@ -267,6 +285,10 @@ void Scene::renderUi(GLFWwindow* window)
             else if (jellyfishQuestCompleted_)
             {
                 ImGui::TextUnformatted("Task complete.");
+            }
+            else if (!jellyfishQuestIntroFinished_)
+            {
+                ImGui::TextUnformatted("Squidward is explaining the task...");
             }
             else if (playerJellyFishCount_ < kCollectibleJellyfishCount)
             {
@@ -656,6 +678,12 @@ void Scene::handleMouseMovement(double xpos, double ypos)
 
 Scene::~Scene()
 {
+    if (taskStartSound_)
+    {
+        ma_sound_uninit(taskStartSound_);
+        delete taskStartSound_;
+        taskStartSound_ = nullptr;
+    }
     if (backgroundMusic_)
     {
         ma_sound_uninit(backgroundMusic_);

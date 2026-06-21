@@ -106,6 +106,7 @@ private:
     bool wasEnterPressed_ = false;
     bool menuOpen_ = false;
     bool jellyfishQuestStarted_ = false;
+    bool jellyfishQuestIntroFinished_ = false;
     bool jellyfishQuestCompleted_ = false;
     int jellyfishCount_ = kMaxJellyfishCount;
     int playerJellyFishCount_ = 0;
@@ -120,4 +121,5 @@ private:
     float bubbleSpawnTimer_ = 0.0f;
     struct ma_engine* audioEngine_ = nullptr;
     struct ma_sound* backgroundMusic_ = nullptr;
+    struct ma_sound* taskStartSound_ = nullptr;
 };
