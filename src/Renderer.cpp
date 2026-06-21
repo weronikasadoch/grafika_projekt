@@ -317,7 +317,7 @@ bool Renderer::initialize()
     const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house_1.obj");
     const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
-    const bool characterLoaded = characterModel_.loadFromObj("assets/models/Spongebob_model/spongebob_model.obj");
+    const bool characterLoaded = animatedCharacterModel_.loadFromGlb("assets/models/Spongebob_model/spongebob.glb");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
     const bool garrLoaded = garyModel_.loadFromObj("assets/models/gary_pet/gary_pet.obj");
     const bool coral1Loaded = coral1Model_.loadFromObj("assets/models/coral_rock/coral_1.obj");
@@ -332,7 +332,17 @@ bool Renderer::initialize()
     const bool coral10Loaded = coral10Model_.loadFromObj("assets/models/coral_rock/coral_10.obj");
     const bool bubbleLoaded = bubbleModel_.loadFromObj("assets/models/sphere.obj");
 
-    const bool spongebobTextureLoaded = spongebobTexture_.loadImage("assets/models/Spongebob_model/Sponge_baseColor.png");
+    bool animatedSpongebobTextureLoaded = false;
+    if (animatedCharacterModel_.hasEmbeddedBaseColorTexture())
+    {
+        const std::vector<unsigned char>& imageData = animatedCharacterModel_.embeddedBaseColorTexture();
+        animatedSpongebobTextureLoaded = animatedSpongebobTexture_.loadImageData(imageData.data(), static_cast<int>(imageData.size()));
+    }
+    if (!animatedSpongebobTextureLoaded)
+    {
+        animatedSpongebobTexture_.createSolidColor(255, 214, 54);
+        animatedSpongebobTextureLoaded = true;
+    }
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
 
     const bool skyboxResourcesCreated = createSkyboxResources();
@@ -358,7 +368,7 @@ bool Renderer::initialize()
         coral9Loaded &&
         coral10Loaded &&
         bubbleLoaded &&
-        spongebobTextureLoaded &&
+        animatedSpongebobTextureLoaded &&
         skyboxResourcesCreated &&
         shadowResourcesCreated &&
         coralInstanceVbo_ != 0;
@@ -387,7 +397,11 @@ void Renderer::render(Scene& scene)
     glm::mat4 characterModel = glm::mat4(1.0f);
     characterModel = glm::translate(characterModel, charPos);
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    characterModel = glm::scale(characterModel, glm::vec3(0.15f));
+    characterModel = glm::scale(characterModel, glm::vec3(0.45f));
+    animatedCharacterModel_.setActiveAnimation(scene.isCharacterMoving()
+        ? "spongebob_idle01.anm.001"
+        : "spongebob_idle01.anm");
+    animatedCharacterModel_.updateAnimation(scene.getElapsedTime());
     if (jellyfishCount > kLightJellyfishIndex)
     {
         pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, scene.getJellyfishAnimationTime(kLightJellyfishIndex)) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
@@ -419,7 +433,7 @@ void Renderer::render(Scene& scene)
     renderModel(patrickModel_, patrickTransform_, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f, false, &scene, 0.0f, 0.85f);
     renderModel(squidwardModel_, squidwardTransform_, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f, false, &scene, 0.0f, 0.85f);
     renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
-    renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, scene.isToonShadingEnabled(), &spongebobTexture_, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
+    renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, scene.isToonShadingEnabled(), &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
     renderModel(garyModel_,garyModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
 
     for (int i = 0; i < jellyfishCount; ++i)
@@ -447,7 +461,7 @@ void Renderer::shutdown()
     glDeleteBuffers(1, &coralInstanceVbo_);
     deleteShadowResources();
     deleteSkyboxResources();
-    spongebobTexture_.destroy();
+    animatedSpongebobTexture_.destroy();
     spongebobFallbackTexture_.destroy();
     jellyfishModel_.destroy();
     coral10Model_.destroy();
@@ -464,7 +478,7 @@ void Renderer::shutdown()
     patrickModel_.destroy();
     spongebobModel_.destroy();
     sandModel_.destroy();
-    characterModel_.destroy();
+    animatedCharacterModel_.destroy();
     garyModel_.destroy();
     bubbleModel_.destroy();
     glDeleteProgram(skyboxProgram_);
@@ -675,6 +689,124 @@ void Renderer::deleteShadowResources()
     shadowFbo_ = 0;
 }
 
+template <typename AssetModel>
+void Renderer::drawModelSurface(const AssetModel& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const
+{
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+
+    glEnable(GL_CULL_FACE);
+
+    if (outlineThickness > 0.0f)
+    {
+        glCullFace(GL_FRONT);
+        glUseProgram(outlineProgram_);
+        setMat4(outlineUniforms_.model, model);
+        setMat4(outlineUniforms_.view, view);
+        setMat4(outlineUniforms_.projection, projection);
+        setFloat(outlineUniforms_.outlineThickness, outlineThickness);
+        setVec3(outlineUniforms_.outlineColor, glm::vec3(0.0f, 0.04f, 0.22f));
+        setInt(outlineUniforms_.useInstancing, 0);
+        assetModel.draw();
+    }
+
+    if (!useToonShading)
+    {
+        glCullFace(GL_BACK);
+        glUseProgram(pbrProgram_);
+        setMat4(pbrUniforms_.model, model);
+        setMat4(pbrUniforms_.view, view);
+        setMat4(pbrUniforms_.projection, projection);
+        setMat4(pbrUniforms_.lightSpaceMatrix, lightSpace);
+        setVec3(pbrUniforms_.baseColor, baseColor);
+        setVec3(pbrUniforms_.cameraPosition, glm::vec3(glm::inverse(view)[3]));
+        setVec3(pbrUniforms_.lightDirection, kLightDirection);
+        setVec3(pbrUniforms_.lightColor, glm::vec3(2.0f, 2.2f, 2.1f));
+        setVec3(pbrUniforms_.ambientColor, ambientColor);
+        setInt(pbrUniforms_.useMaterialColor, useMaterialColor ? 1 : 0);
+        setInt(pbrUniforms_.useDiffuseTexture, diffuseTexture != nullptr ? 1 : 0);
+        setFloat(pbrUniforms_.materialBrightness, materialBrightness);
+        setFloat(pbrUniforms_.metallic, metallic);
+        setFloat(pbrUniforms_.roughness, roughness);
+        setFloat(pbrUniforms_.ao, 1.0f);
+        setInt(pbrUniforms_.useFastPbr, useFastPbr ? 1 : 0);
+        setInt(pbrUniforms_.useInstancing, 0);
+        setVec3(pbrUniforms_.pointLightPosition, pointLightPosition_);
+        setVec3(pbrUniforms_.pointLightColor, pointLightColor_);
+        setFloat(pbrUniforms_.pointLightIntensity, pointLightIntensity_);
+        setFloat(pbrUniforms_.pointLightRadius, pointLightRadius_);
+        setInt(pbrUniforms_.useEmission, useEmission ? 1 : 0);
+        setInt(pbrUniforms_.shadowMap, 1);
+        setInt(pbrUniforms_.diffuseTexture, 0);
+        if (diffuseTexture != nullptr)
+        {
+            diffuseTexture->bind(GL_TEXTURE0);
+        }
+        else
+        {
+            spongebobFallbackTexture_.bind(GL_TEXTURE0);
+        }
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+
+        assetModel.draw();
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glUseProgram(0);
+        glDisable(GL_CULL_FACE);
+        return;
+    }
+
+    glCullFace(GL_BACK);
+    glUseProgram(toonProgram_);
+    setMat4(toonUniforms_.model, model);
+    setMat4(toonUniforms_.view, view);
+    setMat4(toonUniforms_.projection, projection);
+    setMat4(toonUniforms_.lightSpaceMatrix, lightSpace);
+    setVec3(toonUniforms_.baseColor, baseColor);
+    setVec3(toonUniforms_.lightDirection, kLightDirection);
+    setVec3(toonUniforms_.ambientColor, ambientColor);
+    setInt(toonUniforms_.useToonShading, useToonShading ? 1 : 0);
+    setInt(toonUniforms_.useMaterialColor, useMaterialColor ? 1 : 0);
+    setInt(toonUniforms_.useDiffuseTexture, diffuseTexture != nullptr ? 1 : 0);
+    setFloat(toonUniforms_.materialBrightness, materialBrightness);
+    setInt(toonUniforms_.useInstancing, 0);
+    setVec3(toonUniforms_.pointLightPosition, pointLightPosition_);
+    setVec3(toonUniforms_.pointLightColor, pointLightColor_);
+    setFloat(toonUniforms_.pointLightIntensity, pointLightIntensity_);
+    setFloat(toonUniforms_.pointLightRadius, pointLightRadius_);
+    setInt(toonUniforms_.useEmission, useEmission ? 1 : 0);
+    setInt(toonUniforms_.shadowMap, 1);
+    setInt(toonUniforms_.diffuseTexture, 0);
+    if (diffuseTexture != nullptr)
+    {
+        diffuseTexture->bind(GL_TEXTURE0);
+    }
+    else
+    {
+        spongebobFallbackTexture_.bind(GL_TEXTURE0);
+    }
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+
+
+    assetModel.draw();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+
+    glUseProgram(0);
+    glDisable(GL_CULL_FACE);
+}
+
 void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr, Scene* collisionScene, float collisionPadding, float collisionFootprintScale) const
 {
     if (!assetModel.isLoaded())
@@ -796,6 +928,11 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
     glDisable(GL_CULL_FACE);
 }
 
+void Renderer::renderAnimatedModel(const AnimatedModel& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const
+{
+    drawModelSurface(assetModel, model, view, projection, lightSpace, baseColor, outlineThickness, materialBrightness, useToonShading, diffuseTexture, useMaterialColor, useEmission, ambientColor, metallic, roughness, useFastPbr);
+}
+
 void Renderer::renderSkybox(const glm::mat4& view, const glm::mat4& projection) const
 {
     glDepthMask(GL_FALSE);
@@ -830,7 +967,7 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     renderModelShadowCaster(spongebobModel_, lightSpace, spongebobTransform);
     renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
     renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
-    renderModelShadowCaster(characterModel_, lightSpace, characterTransform);
+    renderAnimatedModelShadowCaster(animatedCharacterModel_, lightSpace, characterTransform);
     renderVillageHouseShadowCasters(lightSpace);
     renderCoralShadowCastersInstanced(lightSpace);
     for (int i = 0; i < jellyfishCount; ++i)
@@ -844,6 +981,19 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
 }
 
 void Renderer::renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const
+{
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+
+    setMat4(shadowUniforms_.model, model);
+    setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
+    setInt(shadowUniforms_.useInstancing, 0);
+    assetModel.draw();
+}
+
+void Renderer::renderAnimatedModelShadowCaster(const AnimatedModel& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const
 {
     if (!assetModel.isLoaded())
     {

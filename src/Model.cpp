@@ -125,6 +125,29 @@ bool Texture::loadImage(const std::string& path)
     return true;
 }
 
+bool Texture::loadImageData(const unsigned char* data, int size)
+{
+    if (data == nullptr || size <= 0)
+    {
+        return false;
+    }
+
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    stbi_uc* pixels = stbi_load_from_memory(data, size, &width, &height, &channels, STBI_rgb_alpha);
+    if (pixels == nullptr || width <= 0 || height <= 0)
+    {
+        std::cerr << "Failed to load image texture from GLB data\n";
+        stbi_image_free(pixels);
+        return false;
+    }
+
+    uploadTexture(texture_, width, height, GL_RGBA, pixels);
+    stbi_image_free(pixels);
+    return true;
+}
+
 bool Texture::loadPPM(const std::string& path)
 {
     std::ifstream file(path, std::ios::binary);

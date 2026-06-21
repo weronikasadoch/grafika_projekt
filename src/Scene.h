@@ -40,6 +40,7 @@ public:
 
     glm::vec3 getCharacterPosition() const { return characterPosition_; }
     float getCharacterYaw() const { return characterYaw_; }
+    bool isCharacterMoving() const { return characterMoving_; }
     void handleMouseMovement(double xpos, double ypos);
     struct Bubble
     {
@@ -101,6 +102,7 @@ private:
 
     glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, -1.0f); 
     float characterYaw_ = -90.0f;
+    bool characterMoving_ = false;
     float cameraDistance_ = 2.5f;
     std::vector<Bubble> bubbles_;
     float bubbleSpawnTimer_ = 0.0f;

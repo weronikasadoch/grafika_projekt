@@ -62,6 +62,7 @@ void Scene::processInput(GLFWwindow* window)
 
     if (menuOpen_)
     {
+        characterMoving_ = false;
         return;
     }
 
@@ -82,6 +83,7 @@ void Scene::processInput(GLFWwindow* window)
     front = glm::normalize(front);
 
     const float velocity = kCameraSpeed * deltaTime_;
+    const glm::vec3 previousPosition = characterPosition_;
     glm::vec3 candidatePosition = characterPosition_;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
@@ -92,6 +94,8 @@ void Scene::processInput(GLFWwindow* window)
         candidatePosition -= front * velocity;
     }
     characterPosition_ = applyCharacterPhysics(candidatePosition);
+    const glm::vec2 movement(characterPosition_.x - previousPosition.x, characterPosition_.z - previousPosition.z);
+    characterMoving_ = glm::dot(movement, movement) > 0.000001f;
     const float zoomSpeed = 2.0f * deltaTime_;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
