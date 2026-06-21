@@ -19,6 +19,16 @@ namespace
     constexpr float kSandWorldYOffset = -0.95f;
     constexpr float kSandWorldScale = 3.0f;
     constexpr float kFallbackSandHeight = -1.0f;
+    constexpr float kSquidwardQuestRadius = 3.6f;
+    constexpr float kCollectibleJellyfishPickupRadius = 1.05f;
+    constexpr glm::vec2 kSquidwardQuestPosition(3.0f, -2.6f);
+    constexpr glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
+        glm::vec3(24.6f, 0.12f,  5.4f),
+        glm::vec3(25.2f, 0.18f,  6.7f),
+        glm::vec3(24.7f, 0.10f,  8.0f),
+        glm::vec3(25.3f, 0.16f,  9.3f),
+        glm::vec3(24.8f, 0.14f, 10.6f)
+    };
 
     int parseObjVertexIndex(const std::string& token)
     {
@@ -33,6 +43,7 @@ Scene::Scene(int width, int height)
       height_(height)
 {
     loadSandCollisionMesh("assets/models/scene/sand.obj");
+    collectibleJellyfishActive_.fill(false);
     audioEngine_ = new ma_engine();
 
     if (ma_engine_init(NULL, audioEngine_) == MA_SUCCESS)
@@ -63,6 +74,8 @@ void Scene::processInput(GLFWwindow* window)
     if (menuOpen_)
     {
         characterMoving_ = false;
+        wasSpacePressed_ = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+        wasEnterPressed_ = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS;
         return;
     }
 
@@ -126,6 +139,52 @@ void Scene::processInput(GLFWwindow* window)
         cameraHeightAbove_ = std::max(1.0f, cameraHeightAbove_ - cameraVerticalSpeed);
     }
 
+    const bool isSpacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+    if (isSpacePressed && !wasSpacePressed_)
+    {
+        const glm::vec2 playerPosition(characterPosition_.x, characterPosition_.z);
+        if (!jellyfishQuestStarted_)
+        {
+            if (glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius)
+            {
+                jellyfishQuestStarted_ = true;
+                playerJellyFishCount_ = 0;
+                collectibleJellyfishActive_.fill(true);
+            }
+        }
+        else if (playerJellyFishCount_ < kCollectibleJellyfishCount)
+        {
+            for (int i = 0; i < kCollectibleJellyfishCount; ++i)
+            {
+                if (!collectibleJellyfishActive_[static_cast<std::size_t>(i)])
+                {
+                    continue;
+                }
+
+                const glm::vec3 jellyfishPosition = getCollectibleJellyfishPosition(i);
+                const glm::vec2 jellyfishPosition2d(jellyfishPosition.x, jellyfishPosition.z);
+                if (glm::distance(playerPosition, jellyfishPosition2d) <= kCollectibleJellyfishPickupRadius)
+                {
+                    collectibleJellyfishActive_[static_cast<std::size_t>(i)] = false;
+                    ++playerJellyFishCount_;
+                    break;
+                }
+            }
+        }
+    }
+    wasSpacePressed_ = isSpacePressed;
+
+    const bool isEnterPressed = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS;
+    if (jellyfishQuestStarted_ && !jellyfishQuestCompleted_ && playerJellyFishCount_ >= kCollectibleJellyfishCount)
+    {
+        const glm::vec2 playerPosition(characterPosition_.x, characterPosition_.z);
+        if (glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius)
+        {
+            jellyfishQuestCompleted_ = true;
+        }
+    }
+    wasEnterPressed_ = isEnterPressed;
+
     updateCamera();
 }
 
@@ -186,6 +245,43 @@ void Scene::renderUi(GLFWwindow* window)
 {
     if (!menuOpen_)
     {
+        const glm::vec2 playerPosition(characterPosition_.x, characterPosition_.z);
+        const bool nearSquidward = glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius;
+
+        if (jellyfishQuestStarted_ || nearSquidward)
+        {
+            ImGui::SetNextWindowPos(ImVec2(18.0f, 18.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowBgAlpha(0.35f);
+            const ImGuiWindowFlags questFlags =
+                ImGuiWindowFlags_NoDecoration |
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav;
+
+            ImGui::Begin("QuestHud", nullptr, questFlags);
+            if (!jellyfishQuestStarted_)
+            {
+                ImGui::TextUnformatted("Press SPACE to start the quest.");
+            }
+            else if (jellyfishQuestCompleted_)
+            {
+                ImGui::TextUnformatted("Task complete.");
+            }
+            else if (playerJellyFishCount_ < kCollectibleJellyfishCount)
+            {
+                ImGui::Text("Quest: Bring 5 white jellyfish to Squidward. %d/%d", playerJellyFishCount_, kCollectibleJellyfishCount);
+            }
+            else
+            {
+                ImGui::TextUnformatted("Quest: Return to Squidward.");
+            }
+            ImGui::End();
+        }
+    }
+
+    if (!menuOpen_)
+    {
         return;
     }
 
@@ -209,11 +305,9 @@ void Scene::renderUi(GLFWwindow* window)
     ImGui::Separator();
     ImGui::Checkbox("Toon shading", &toonShadingEnabled_);
     ImGui::Text("Current shading: %s", toonShadingEnabled_ ? "Toon" : "PBR");
-    ImGui::TextUnformatted("Corals: PBR");
+    ImGui::TextUnformatted("Corals: Toon");
     ImGui::SliderFloat("Outline", &outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness, "%.3f");
     outlineThickness_ = std::clamp(outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness);
-    ImGui::SliderInt("Jellyfish", &jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
-    jellyfishCount_ = std::clamp(jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
 
     ImGui::Separator();
     if (ImGui::Button("Quit", ImVec2(-1.0f, 0.0f)))
@@ -272,6 +366,31 @@ float Scene::getJellyfishAnimationTime(int index) const
     }
 
     return jellyfishAnimationTimes_[static_cast<std::size_t>(index)];
+}
+
+int Scene::getPlayerJellyFishCount() const
+{
+    return playerJellyFishCount_;
+}
+
+bool Scene::isCollectibleJellyfishActive(int index) const
+{
+    if (index < 0 || index >= kCollectibleJellyfishCount)
+    {
+        return false;
+    }
+
+    return collectibleJellyfishActive_[static_cast<std::size_t>(index)];
+}
+
+glm::vec3 Scene::getCollectibleJellyfishPosition(int index) const
+{
+    if (index < 0 || index >= kCollectibleJellyfishCount)
+    {
+        return glm::vec3(0.0f);
+    }
+
+    return kCollectibleJellyfishPositions[index];
 }
 
 bool Scene::isToonShadingEnabled() const

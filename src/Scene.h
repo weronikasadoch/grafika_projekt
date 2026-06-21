@@ -14,6 +14,7 @@ public:
     static constexpr float kOutlineMaxThickness = 0.12f;
     static constexpr int kMinJellyfishCount = 0;
     static constexpr int kMaxJellyfishCount = 10;
+    static constexpr int kCollectibleJellyfishCount = 5;
 
     Scene(int width, int height);
     ~Scene();
@@ -31,6 +32,11 @@ public:
     float getOutlineThickness() const;
     int getJellyfishCount() const;
     float getJellyfishAnimationTime(int index) const;
+    int getPlayerJellyFishCount() const;
+    bool isJellyfishQuestStarted() const { return jellyfishQuestStarted_; }
+    bool isJellyfishQuestComplete() const { return jellyfishQuestStarted_ && playerJellyFishCount_ >= kCollectibleJellyfishCount; }
+    bool isCollectibleJellyfishActive(int index) const;
+    glm::vec3 getCollectibleJellyfishPosition(int index) const;
     bool isToonShadingEnabled() const;
     bool isMenuOpen() const;
     float getSandHeight(float x, float z) const;
@@ -96,9 +102,15 @@ private:
 
     bool toonShadingEnabled_ = true;
     bool wasEscapePressed_ = false;
+    bool wasSpacePressed_ = false;
+    bool wasEnterPressed_ = false;
     bool menuOpen_ = false;
+    bool jellyfishQuestStarted_ = false;
+    bool jellyfishQuestCompleted_ = false;
     int jellyfishCount_ = kMaxJellyfishCount;
+    int playerJellyFishCount_ = 0;
     std::array<float, kMaxJellyfishCount> jellyfishAnimationTimes_ = {};
+    std::array<bool, kCollectibleJellyfishCount> collectibleJellyfishActive_ = {};
 
     glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, -1.0f); 
     float characterYaw_ = -90.0f;

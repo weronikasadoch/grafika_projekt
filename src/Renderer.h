@@ -122,6 +122,7 @@ private:
     glm::mat4 createVillageCoralTransform(int index, const Scene& scene) const;
     glm::mat4 createCoralTransform(int index, const Scene& scene) const;
     glm::mat4 createJellyfishTransform(int index, float elapsedTime) const;
+    glm::mat4 createCollectibleJellyfishTransform(const glm::vec3& position, int index, float elapsedTime) const;
     glm::mat4 createLightSpaceMatrix() const;
     void setMat4(GLint location, const glm::mat4& value) const;
     void setVec3(GLint location, const glm::vec3& value) const;

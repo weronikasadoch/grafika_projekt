@@ -444,6 +444,31 @@ void Renderer::render(Scene& scene)
         const glm::vec3 jellyfishColor = isLightSource ? glm::vec3(0.45f, 0.95f, 1.0f) : glm::vec3(1.0f, 0.42f, 0.78f);
         renderModel(jellyfishModel_, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)), view, projection, lightSpace, jellyfishColor, smallModelOutlineThickness, isLightSource ? 2.2f : 1.6f, scene.isToonShadingEnabled(), nullptr, false, isLightSource, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, isLightSource ? 0.18f : 0.35f);
     }
+    for (int i = 0; i < Scene::kCollectibleJellyfishCount; ++i)
+    {
+        if (!scene.isCollectibleJellyfishActive(i))
+        {
+            continue;
+        }
+
+        renderModel(
+            jellyfishModel_,
+            createCollectibleJellyfishTransform(scene.getCollectibleJellyfishPosition(i), i, scene.getElapsedTime()),
+            view,
+            projection,
+            lightSpace,
+            glm::vec3(1.0f, 0.86f, 0.16f),
+            smallModelOutlineThickness,
+            2.0f,
+            scene.isToonShadingEnabled(),
+            nullptr,
+            false,
+            true,
+            glm::vec3(0.18f, 0.30f, 0.34f),
+            0.0f,
+            0.22f
+        );
+    }
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Standardowe mieszanie dla szkła/powietrza
     glDepthMask(GL_FALSE);
@@ -976,6 +1001,17 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     {
         renderModelShadowCaster(jellyfishModel_, lightSpace, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)));
     }
+    for (int i = 0; i < Scene::kCollectibleJellyfishCount; ++i)
+    {
+        if (scene.isCollectibleJellyfishActive(i))
+        {
+            renderModelShadowCaster(
+                jellyfishModel_,
+                lightSpace,
+                createCollectibleJellyfishTransform(scene.getCollectibleJellyfishPosition(i), i, scene.getElapsedTime())
+            );
+        }
+    }
     glUseProgram(0);
     glDisable(GL_CULL_FACE);
 
@@ -1433,6 +1469,24 @@ glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
     model = glm::translate(model, position);
     model = glm::rotate(model, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, tilt, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(scaleX, scaleY, scaleZ));
+    return model;
+}
+
+glm::mat4 Renderer::createCollectibleJellyfishTransform(const glm::vec3& position, int index, float elapsedTime) const
+{
+    const float t = elapsedTime * 1.15f + static_cast<float>(index) * 1.37f;
+    const float pulse = std::sin(t * 2.8f);
+    const float hover = std::sin(t * 1.7f) * 0.12f;
+    const float yaw = t * 0.55f;
+    const float scaleX = 0.42f * (1.0f + 0.08f * std::max(0.0f, pulse));
+    const float scaleY = 0.20f * (1.0f - 0.18f * std::abs(pulse));
+    const float scaleZ = 0.42f * (1.0f + 0.08f * std::max(0.0f, pulse));
+
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, position + glm::vec3(0.0f, hover, 0.0f));
+    model = glm::rotate(model, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(4.0f) * pulse, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, glm::vec3(scaleX, scaleY, scaleZ));
     return model;
 }
