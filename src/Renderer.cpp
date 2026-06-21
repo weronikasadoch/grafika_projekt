@@ -398,10 +398,12 @@ void Renderer::render(Scene& scene)
     characterModel = glm::translate(characterModel, charPos);
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     characterModel = glm::scale(characterModel, glm::vec3(0.45f));
-    animatedCharacterModel_.setActiveAnimation(scene.isCharacterMoving()
+    const bool characterMoving = scene.isCharacterMoving();
+    animatedCharacterModel_.setActiveAnimation(characterMoving
         ? "spongebob_idle01.anm.001"
         : "spongebob_idle01.anm");
-    animatedCharacterModel_.updateAnimation(scene.getElapsedTime());
+    const float animationSpeed = characterMoving ? 1.7f : 1.0f;
+    animatedCharacterModel_.updateAnimation(scene.getElapsedTime() * animationSpeed);
     if (jellyfishCount > kLightJellyfishIndex)
     {
         pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, scene.getJellyfishAnimationTime(kLightJellyfishIndex)) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
@@ -433,7 +435,7 @@ void Renderer::render(Scene& scene)
     renderModel(patrickModel_, patrickTransform_, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f, false, &scene, 0.0f, 0.85f);
     renderModel(squidwardModel_, squidwardTransform_, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f, false, &scene, 0.0f, 0.85f);
     renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
-    renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, scene.isToonShadingEnabled(), &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
+    renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false, &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
     renderModel(garyModel_,garyModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
 
     for (int i = 0; i < jellyfishCount; ++i)
