@@ -122,4 +122,5 @@ private:
     struct ma_engine* audioEngine_ = nullptr;
     struct ma_sound* backgroundMusic_ = nullptr;
     struct ma_sound* taskStartSound_ = nullptr;
+    struct ma_sound* taskEndSound_ = nullptr;
 };

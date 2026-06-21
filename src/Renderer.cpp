@@ -34,6 +34,9 @@ namespace
     constexpr float kShadowLightDistance = 55.0f;
     constexpr float kShadowFarPlane = 110.0f;
     constexpr float kHighFaceCoralLowerOffset = 0.28f;
+    constexpr float kSquidwardNpcX = 5.2f;
+    constexpr float kSquidwardNpcZ = -2.6f;
+    constexpr float kSquidwardNpcScale = 0.75f;
     const glm::vec3 kLightDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 
     struct DecorationPlacement
@@ -317,6 +320,7 @@ bool Renderer::initialize()
     const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house_1.obj");
     const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
+    const bool squidwardNpcLoaded = squidwardNpcModel_.loadFromObj("assets/models/squidward/squidward.obj");
     const bool characterLoaded = animatedCharacterModel_.loadFromGlb("assets/models/Spongebob_model/spongebob.glb");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
     const bool garrLoaded = garyModel_.loadFromObj("assets/models/gary_pet/gary_pet.obj");
@@ -354,6 +358,7 @@ bool Renderer::initialize()
         spongebobLoaded &&
         patrickLoaded &&
         squidwardLoaded &&
+        squidwardNpcLoaded &&
         characterLoaded &&
         jellyfishLoaded &&
         garrLoaded &&
@@ -434,6 +439,7 @@ void Renderer::render(Scene& scene)
     renderModel(spongebobModel_, spongebobTransform_, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.85f);
     renderModel(patrickModel_, patrickTransform_, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f, false, &scene, 0.0f, 0.85f);
     renderModel(squidwardModel_, squidwardTransform_, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f, false, &scene, 0.0f, 0.85f);
+    renderModel(squidwardNpcModel_, squidwardNpcTransform_, view, projection, lightSpace, glm::vec3(0.54f, 0.76f, 0.78f), smallModelOutlineThickness, 1.8f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.65f);
     renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
     renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false, &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
     renderModel(garyModel_,garyModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
@@ -502,6 +508,7 @@ void Renderer::shutdown()
     coral2Model_.destroy();
     coral1Model_.destroy();
     squidwardModel_.destroy();
+    squidwardNpcModel_.destroy();
     patrickModel_.destroy();
     spongebobModel_.destroy();
     sandModel_.destroy();
@@ -994,6 +1001,7 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     renderModelShadowCaster(spongebobModel_, lightSpace, spongebobTransform);
     renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
     renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
+    renderModelShadowCaster(squidwardNpcModel_, lightSpace, squidwardNpcTransform_);
     renderAnimatedModelShadowCaster(animatedCharacterModel_, lightSpace, characterTransform);
     renderVillageHouseShadowCasters(lightSpace);
     renderCoralShadowCastersInstanced(lightSpace);
@@ -1278,6 +1286,21 @@ void Renderer::initializeStaticTransforms(Scene& scene)
     squidwardTransform_ = glm::scale(
         glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.20f, -2.6f)),
         glm::vec3(0.45f)
+    );
+    squidwardNpcTransform_ = glm::scale(
+        glm::rotate(
+            glm::translate(
+                glm::mat4(1.0f),
+                glm::vec3(
+                    kSquidwardNpcX,
+                    scene.getSandHeight(kSquidwardNpcX, kSquidwardNpcZ) - squidwardNpcModel_.minY() * kSquidwardNpcScale,
+                    kSquidwardNpcZ
+                )
+            ),
+            glm::radians(-90.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        ),
+        glm::vec3(kSquidwardNpcScale)
     );
     for (int i = 0; i < kCoralPlacementCount; ++i)
     {

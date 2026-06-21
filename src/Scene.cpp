@@ -19,9 +19,9 @@ namespace
     constexpr float kSandWorldYOffset = -0.95f;
     constexpr float kSandWorldScale = 3.0f;
     constexpr float kFallbackSandHeight = -1.0f;
-    constexpr float kSquidwardQuestRadius = 3.6f;
+    constexpr float kSquidwardQuestRadius = 1.35f;
     constexpr float kCollectibleJellyfishPickupRadius = 1.05f;
-    constexpr glm::vec2 kSquidwardQuestPosition(3.0f, -2.6f);
+    constexpr glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
     constexpr glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
         glm::vec3(24.6f, 0.12f,  5.4f),
         glm::vec3(25.2f, 0.18f,  6.7f),
@@ -59,6 +59,13 @@ Scene::Scene(int width, int height)
         {
             delete taskStartSound_;
             taskStartSound_ = nullptr;
+        }
+
+        taskEndSound_ = new ma_sound();
+        if (ma_sound_init_from_file(audioEngine_, "assets/voice_lines/task-end-sound.mp3", 0, NULL, NULL, taskEndSound_) != MA_SUCCESS)
+        {
+            delete taskEndSound_;
+            taskEndSound_ = nullptr;
         }
     }
 }
@@ -194,6 +201,11 @@ void Scene::processInput(GLFWwindow* window)
         if (glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius)
         {
             jellyfishQuestCompleted_ = true;
+            if (taskEndSound_ != nullptr)
+            {
+                ma_sound_seek_to_pcm_frame(taskEndSound_, 0);
+                ma_sound_start(taskEndSound_);
+            }
         }
     }
     wasEnterPressed_ = isEnterPressed;
@@ -683,6 +695,12 @@ Scene::~Scene()
         ma_sound_uninit(taskStartSound_);
         delete taskStartSound_;
         taskStartSound_ = nullptr;
+    }
+    if (taskEndSound_)
+    {
+        ma_sound_uninit(taskEndSound_);
+        delete taskEndSound_;
+        taskEndSound_ = nullptr;
     }
     if (backgroundMusic_)
     {

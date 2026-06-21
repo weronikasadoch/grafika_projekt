@@ -155,11 +155,13 @@ private:
     glm::mat4 spongebobTransform_ = glm::mat4(1.0f);
     glm::mat4 patrickTransform_ = glm::mat4(1.0f);
     glm::mat4 squidwardTransform_ = glm::mat4(1.0f);
+    glm::mat4 squidwardNpcTransform_ = glm::mat4(1.0f);
     bool staticTransformsInitialized_ = false;
     Model sandModel_;
     Model spongebobModel_;
     Model patrickModel_;
     Model squidwardModel_;
+    Model squidwardNpcModel_;
     AnimatedModel animatedCharacterModel_;
     Model jellyfishModel_;
     Model garyModel_;
