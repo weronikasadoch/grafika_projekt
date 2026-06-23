@@ -17,7 +17,18 @@
 namespace
 {
     constexpr float kSandWorldYOffset = -0.95f;
+    constexpr float kSandWorldScale = 3.0f;
     constexpr float kFallbackSandHeight = -1.0f;
+    constexpr float kSquidwardQuestRadius = 1.35f;
+    constexpr float kCollectibleJellyfishPickupRadius = 1.05f;
+    constexpr glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
+    constexpr glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
+        glm::vec3(24.6f, 0.12f,  5.4f),
+        glm::vec3(25.2f, 0.18f,  6.7f),
+        glm::vec3(24.7f, 0.10f,  8.0f),
+        glm::vec3(25.3f, 0.16f,  9.3f),
+        glm::vec3(24.8f, 0.14f, 10.6f)
+    };
 
     int parseObjVertexIndex(const std::string& token)
     {
@@ -32,14 +43,29 @@ Scene::Scene(int width, int height)
       height_(height)
 {
     loadSandCollisionMesh("assets/models/scene/sand.obj");
+    collectibleJellyfishActive_.fill(false);
     audioEngine_ = new ma_engine();
-    
+
     if (ma_engine_init(NULL, audioEngine_) == MA_SUCCESS)
     {
         backgroundMusic_ = new ma_sound();
         if (ma_sound_init_from_file(audioEngine_, "assets/music.mp3", 0x00000003, NULL, NULL, backgroundMusic_) == MA_SUCCESS)
         {
             ma_sound_start(backgroundMusic_);
+        }
+
+        taskStartSound_ = new ma_sound();
+        if (ma_sound_init_from_file(audioEngine_, "assets/voice_lines/spongebob-task-start.mp3", 0, NULL, NULL, taskStartSound_) != MA_SUCCESS)
+        {
+            delete taskStartSound_;
+            taskStartSound_ = nullptr;
+        }
+
+        taskEndSound_ = new ma_sound();
+        if (ma_sound_init_from_file(audioEngine_, "assets/voice_lines/task-end-sound.mp3", 0, NULL, NULL, taskEndSound_) != MA_SUCCESS)
+        {
+            delete taskEndSound_;
+            taskEndSound_ = nullptr;
         }
     }
 }
@@ -61,6 +87,9 @@ void Scene::processInput(GLFWwindow* window)
 
     if (menuOpen_)
     {
+        characterMoving_ = false;
+        wasSpacePressed_ = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+        wasEnterPressed_ = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS;
         return;
     }
 
@@ -81,6 +110,7 @@ void Scene::processInput(GLFWwindow* window)
     front = glm::normalize(front);
 
     const float velocity = kCameraSpeed * deltaTime_;
+    const glm::vec3 previousPosition = characterPosition_;
     glm::vec3 candidatePosition = characterPosition_;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
@@ -91,6 +121,8 @@ void Scene::processInput(GLFWwindow* window)
         candidatePosition -= front * velocity;
     }
     characterPosition_ = applyCharacterPhysics(candidatePosition);
+    const glm::vec2 movement(characterPosition_.x - previousPosition.x, characterPosition_.z - previousPosition.z);
+    characterMoving_ = glm::dot(movement, movement) > 0.000001f;
     const float zoomSpeed = 2.0f * deltaTime_;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
@@ -103,6 +135,80 @@ void Scene::processInput(GLFWwindow* window)
 
     const float cameraOrbitSpeed = kCameraRotationSpeed * deltaTime_ * 0.03f;
     const float cameraVerticalSpeed = 2.0f * deltaTime_;
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        cameraYawOffset_ += cameraOrbitSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        cameraYawOffset_ -= cameraOrbitSpeed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        cameraHeightAbove_ = std::min(3.0f, cameraHeightAbove_ + cameraVerticalSpeed);
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        cameraHeightAbove_ = std::max(1.0f, cameraHeightAbove_ - cameraVerticalSpeed);
+    }
+
+    const bool isSpacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+    if (isSpacePressed && !wasSpacePressed_)
+    {
+        const glm::vec2 playerPosition(characterPosition_.x, characterPosition_.z);
+        if (!jellyfishQuestStarted_)
+        {
+            if (glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius)
+            {
+                jellyfishQuestStarted_ = true;
+                jellyfishQuestIntroFinished_ = taskStartSound_ == nullptr;
+                playerJellyFishCount_ = 0;
+                collectibleJellyfishActive_.fill(jellyfishQuestIntroFinished_);
+                if (taskStartSound_ != nullptr)
+                {
+                    ma_sound_seek_to_pcm_frame(taskStartSound_, 0);
+                    ma_sound_start(taskStartSound_);
+                }
+            }
+        }
+        else if (jellyfishQuestIntroFinished_ && playerJellyFishCount_ < kCollectibleJellyfishCount)
+        {
+            for (int i = 0; i < kCollectibleJellyfishCount; ++i)
+            {
+                if (!collectibleJellyfishActive_[static_cast<std::size_t>(i)])
+                {
+                    continue;
+                }
+
+                const glm::vec3 jellyfishPosition = getCollectibleJellyfishPosition(i);
+                const glm::vec2 jellyfishPosition2d(jellyfishPosition.x, jellyfishPosition.z);
+                if (glm::distance(playerPosition, jellyfishPosition2d) <= kCollectibleJellyfishPickupRadius)
+                {
+                    collectibleJellyfishActive_[static_cast<std::size_t>(i)] = false;
+                    ++playerJellyFishCount_;
+                    break;
+                }
+            }
+        }
+    }
+    wasSpacePressed_ = isSpacePressed;
+
+    const bool isEnterPressed = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_KP_ENTER) == GLFW_PRESS;
+    if (jellyfishQuestStarted_ && !jellyfishQuestCompleted_ && playerJellyFishCount_ >= kCollectibleJellyfishCount)
+    {
+        const glm::vec2 playerPosition(characterPosition_.x, characterPosition_.z);
+        if (glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius)
+        {
+            jellyfishQuestCompleted_ = true;
+            if (taskEndSound_ != nullptr)
+            {
+                ma_sound_seek_to_pcm_frame(taskEndSound_, 0);
+                ma_sound_start(taskEndSound_);
+            }
+        }
+    }
+    wasEnterPressed_ = isEnterPressed;
 
     updateCamera();
 }
@@ -120,21 +226,26 @@ void Scene::updateDeltaTime(float currentFrameTime)
             jellyfishAnimationTimes_[static_cast<std::size_t>(i)] += deltaTime_;
         }
     }
+    if (jellyfishQuestStarted_ && !jellyfishQuestIntroFinished_ && taskStartSound_ != nullptr && ma_sound_at_end(taskStartSound_))
+    {
+        jellyfishQuestIntroFinished_ = true;
+        collectibleJellyfishActive_.fill(true);
+    }
     bubbleSpawnTimer_ += deltaTime_;
-    if (bubbleSpawnTimer_ >= 0.3f) 
+    if (bubbleSpawnTimer_ >= 0.3f)
     {
         bubbleSpawnTimer_ = 0.0f;
-        if (bubbles_.size() < 40) 
+        if (bubbles_.size() < 40)
         {
             Bubble newBubble;
-            
+
 
             float randomX = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
             float randomZ = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
             float startY = getSandHeight(randomX, randomZ);
 
             newBubble.position = glm::vec3(randomX, startY, randomZ);
-            newBubble.speed = 1.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 1.5f); 
+            newBubble.speed = 1.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 1.5f);
             float randomFraction = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
             newBubble.size = 0.05f + randomFraction * (0.15f - 0.02f);
             newBubble.wobbleSpeed = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 4.0f);
@@ -164,6 +275,47 @@ void Scene::renderUi(GLFWwindow* window)
 {
     if (!menuOpen_)
     {
+        const glm::vec2 playerPosition(characterPosition_.x, characterPosition_.z);
+        const bool nearSquidward = glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius;
+
+        if (jellyfishQuestStarted_ || nearSquidward)
+        {
+            ImGui::SetNextWindowPos(ImVec2(18.0f, 18.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowBgAlpha(0.35f);
+            const ImGuiWindowFlags questFlags =
+                ImGuiWindowFlags_NoDecoration |
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav;
+
+            ImGui::Begin("QuestHud", nullptr, questFlags);
+            if (!jellyfishQuestStarted_)
+            {
+                ImGui::TextUnformatted("Press SPACE to start the quest.");
+            }
+            else if (jellyfishQuestCompleted_)
+            {
+                ImGui::TextUnformatted("Task complete.");
+            }
+            else if (!jellyfishQuestIntroFinished_)
+            {
+                ImGui::TextUnformatted("Squidward is explaining the task...");
+            }
+            else if (playerJellyFishCount_ < kCollectibleJellyfishCount)
+            {
+                ImGui::Text("Quest: Bring 5 white jellyfish to Squidward. %d/%d", playerJellyFishCount_, kCollectibleJellyfishCount);
+            }
+            else
+            {
+                ImGui::TextUnformatted("Quest: Return to Squidward.");
+            }
+            ImGui::End();
+        }
+    }
+
+    if (!menuOpen_)
+    {
         return;
     }
 
@@ -187,11 +339,9 @@ void Scene::renderUi(GLFWwindow* window)
     ImGui::Separator();
     ImGui::Checkbox("Toon shading", &toonShadingEnabled_);
     ImGui::Text("Current shading: %s", toonShadingEnabled_ ? "Toon" : "PBR");
-    ImGui::TextUnformatted("Corals: PBR");
+    ImGui::TextUnformatted("Corals: Toon");
     ImGui::SliderFloat("Outline", &outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness, "%.3f");
     outlineThickness_ = std::clamp(outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness);
-    ImGui::SliderInt("Jellyfish", &jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
-    jellyfishCount_ = std::clamp(jellyfishCount_, kMinJellyfishCount, kMaxJellyfishCount);
 
     ImGui::Separator();
     if (ImGui::Button("Quit", ImVec2(-1.0f, 0.0f)))
@@ -252,6 +402,31 @@ float Scene::getJellyfishAnimationTime(int index) const
     return jellyfishAnimationTimes_[static_cast<std::size_t>(index)];
 }
 
+int Scene::getPlayerJellyFishCount() const
+{
+    return playerJellyFishCount_;
+}
+
+bool Scene::isCollectibleJellyfishActive(int index) const
+{
+    if (index < 0 || index >= kCollectibleJellyfishCount)
+    {
+        return false;
+    }
+
+    return collectibleJellyfishActive_[static_cast<std::size_t>(index)];
+}
+
+glm::vec3 Scene::getCollectibleJellyfishPosition(int index) const
+{
+    if (index < 0 || index >= kCollectibleJellyfishCount)
+    {
+        return glm::vec3(0.0f);
+    }
+
+    return kCollectibleJellyfishPositions[index];
+}
+
 bool Scene::isToonShadingEnabled() const
 {
     return toonShadingEnabled_;
@@ -260,6 +435,22 @@ bool Scene::isToonShadingEnabled() const
 bool Scene::isMenuOpen() const
 {
     return menuOpen_;
+}
+
+void Scene::clearCollisionBoxes()
+{
+    collisionBoxes_.clear();
+    collisionEllipses_.clear();
+}
+
+void Scene::addCollisionBox(const glm::vec2& minBounds, const glm::vec2& maxBounds)
+{
+    collisionBoxes_.push_back({minBounds, maxBounds});
+}
+
+void Scene::addCollisionEllipse(const glm::vec2& center, const glm::vec2& radii)
+{
+    collisionEllipses_.push_back({center, radii});
 }
 
 void Scene::updateCamera()
@@ -285,35 +476,23 @@ glm::vec3 Scene::applyCharacterPhysics(const glm::vec3& candidatePosition) const
 {
     glm::vec3 resolved = candidatePosition;
 
-    constexpr float sandHalfExtent = 14.0f;
+    constexpr float sandHalfExtent = 14.0f * kSandWorldScale;
     resolved.x = std::clamp(resolved.x, -sandHalfExtent, sandHalfExtent);
     resolved.z = std::clamp(resolved.z, -sandHalfExtent, sandHalfExtent);
     resolved.y = getSandHeight(resolved.x, resolved.z);
 
-    resolved = resolveHouseCollisions(resolved);
+    resolved = resolveSceneCollisions(resolved);
     resolved.y = getSandHeight(resolved.x, resolved.z);
 
     return resolved;
 }
 
-glm::vec3 Scene::resolveHouseCollisions(const glm::vec3& position) const
+glm::vec3 Scene::resolveSceneCollisions(const glm::vec3& position) const
 {
-    struct CollisionBox
-    {
-        glm::vec2 minBounds;
-        glm::vec2 maxBounds;
-    };
-    
-    static const CollisionBox houseColliders[] = {
-        {glm::vec2(-0.69f, -4.02f), glm::vec2(0.67f, -2.63f)},
-        {glm::vec2(-3.80f, -3.34f), glm::vec2(-2.18f, -1.85f)},
-        {glm::vec2(2.22f, -3.72f), glm::vec2(3.59f, -2.44f)},
-    };
-   
     constexpr float characterRadius = 0.18f;
 
     glm::vec2 resolved(position.x, position.z);
-    for (const CollisionBox& collider : houseColliders)
+    for (const CollisionBox& collider : collisionBoxes_)
     {
         const glm::vec2 closestPoint(
             std::clamp(resolved.x, collider.minBounds.x, collider.maxBounds.x),
@@ -354,6 +533,33 @@ glm::vec3 Scene::resolveHouseCollisions(const glm::vec3& position) const
         {
             resolved.y = collider.maxBounds.y + characterRadius;
         }
+    }
+
+    for (const CollisionEllipse& collider : collisionEllipses_)
+    {
+        const glm::vec2 inflatedRadii = collider.radii + glm::vec2(characterRadius);
+        if (inflatedRadii.x <= 0.0f || inflatedRadii.y <= 0.0f)
+        {
+            continue;
+        }
+
+        glm::vec2 offset = resolved - collider.center;
+        const float normalizedDistance =
+            (offset.x * offset.x) / (inflatedRadii.x * inflatedRadii.x) +
+            (offset.y * offset.y) / (inflatedRadii.y * inflatedRadii.y);
+
+        if (normalizedDistance >= 1.0f)
+        {
+            continue;
+        }
+
+        if (glm::dot(offset, offset) < 0.0001f)
+        {
+            resolved = collider.center + glm::vec2(inflatedRadii.x, 0.0f);
+            continue;
+        }
+
+        resolved = collider.center + offset / std::sqrt(normalizedDistance);
     }
 
     return glm::vec3(resolved.x, position.y, resolved.y);
@@ -419,6 +625,8 @@ void Scene::loadSandCollisionMesh(const char* path)
         {
             glm::vec3 vertex(0.0f);
             stream >> vertex.x >> vertex.y >> vertex.z;
+            vertex.x *= kSandWorldScale;
+            vertex.z *= kSandWorldScale;
             vertices.push_back(vertex);
         }
         else if (command == "f")
@@ -466,7 +674,7 @@ void Scene::handleMouseMovement(double xpos, double ypos)
     }
 
     float xoffset = static_cast<float>(xpos) - lastX;
-    float yoffset = lastY - static_cast<float>(ypos); 
+    float yoffset = lastY - static_cast<float>(ypos);
 
     lastX = static_cast<float>(xpos);
     lastY = static_cast<float>(ypos);
@@ -482,6 +690,18 @@ void Scene::handleMouseMovement(double xpos, double ypos)
 
 Scene::~Scene()
 {
+    if (taskStartSound_)
+    {
+        ma_sound_uninit(taskStartSound_);
+        delete taskStartSound_;
+        taskStartSound_ = nullptr;
+    }
+    if (taskEndSound_)
+    {
+        ma_sound_uninit(taskEndSound_);
+        delete taskEndSound_;
+        taskEndSound_ = nullptr;
+    }
     if (backgroundMusic_)
     {
         ma_sound_uninit(backgroundMusic_);

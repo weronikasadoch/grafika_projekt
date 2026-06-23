@@ -22,18 +22,21 @@ namespace
     constexpr float kPi = 3.14159265358979323846f;
     constexpr int kJellyfishCount = 10;
     constexpr int kCoralModelCount = 10;
-    constexpr int kCoralPlacementCount = 10;
+    constexpr int kCoralPlacementCount = 22;
     constexpr int kVisibleCoralInstanceCount = kCoralPlacementCount;
-    constexpr int kRockCoralCount = kVisibleCoralInstanceCount;
-    constexpr int kShadowMapSize = 2048;
+    constexpr int kVillageCount = 5;
+    constexpr int kVillageHouseCount = kVillageCount * 3;
+    constexpr int kVillageCoralCount = kVillageCount * 5;
+    constexpr int kShadowMapSize = 5096;
     constexpr int kLightJellyfishIndex = 2;
-    constexpr float kRockModelMinY = -0.206605f;
-    constexpr float kRockModelMaxY = 0.101145f;
-    constexpr float kRockScale = 0.35f;
-    constexpr float kRockX = -6.2f;
-    constexpr float kRockZ = 6.4f;
-    constexpr float kRockCoralEmbedDepth = 0.08f;
+    constexpr float kSandHalfExtent = 45.0f;
+    constexpr float kShadowOrthoExtent = kSandHalfExtent + 4.0f;
+    constexpr float kShadowLightDistance = 55.0f;
+    constexpr float kShadowFarPlane = 110.0f;
     constexpr float kHighFaceCoralLowerOffset = 0.28f;
+    constexpr float kSquidwardNpcX = 5.2f;
+    constexpr float kSquidwardNpcZ = -2.6f;
+    constexpr float kSquidwardNpcScale = 0.75f;
     const glm::vec3 kLightDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 
     struct DecorationPlacement
@@ -46,17 +49,66 @@ namespace
         float scale = 1.0f;
     };
 
+    struct VillagePlacement
+    {
+        float x = 0.0f;
+        float z = 0.0f;
+        float yawDegrees = 0.0f;
+    };
+
+    constexpr VillagePlacement kVillagePlacements[kVillageCount] = {
+        {-19.0f, -18.0f,  18.0f},
+        { 18.0f, -17.5f, -24.0f},
+        {-21.0f,   3.0f,  42.0f},
+        { 20.0f,   8.0f, -58.0f},
+        {  5.0f,  22.0f,  12.0f}
+    };
+
+    constexpr glm::vec2 kVillageHouseOffsets[3] = {
+        glm::vec2(0.0f, -1.15f),
+        glm::vec2(-1.45f, 1.05f),
+        glm::vec2(1.45f, 1.05f)
+    };
+
+    constexpr glm::vec2 kVillageCoralOffsets[5] = {
+        glm::vec2(-2.15f, -2.25f),
+        glm::vec2( 2.20f, -2.05f),
+        glm::vec2(-2.35f,  2.20f),
+        glm::vec2( 2.30f,  2.10f),
+        glm::vec2( 0.00f,  2.75f)
+    };
+
+    constexpr int kVillageCoralModelIndices[kVillageCoralCount] = {
+        5, 8, 6, 9, 7,
+        6, 9, 5, 8, 7,
+        7, 5, 9, 6, 8,
+        8, 6, 7, 5, 9,
+        9, 7, 8, 6, 5
+    };
+
     constexpr DecorationPlacement kCoralPlacements[kCoralPlacementCount] = {
         {0, -4.0f, -0.88f, 6.8f,  18.0f, 1.0f},
         {1, -7.6f, -0.88f, 6.8f, -28.0f, 1.0f},
         {2, -6.0f, -0.90f, 6.8f,  52.0f, 1.0f},
         {3, -4.4f, -0.88f, 6.8f,  95.0f, 1.0f},
-        {4, -2.8f, -0.88f, 6.8f, -70.0f, 1.0f},
         {5, -9.2f, -0.90f, 6.0f,  34.0f, 1.2f},
         {6, -7.6f, -0.88f, 6.0f, 142.0f, 1.2f},
         {7, -6.0f, -0.88f, 6.0f, -18.0f, 1.2f},
-        {8, -4.4f, -0.88f, 6.0f,  63.0f, 1.2f},
-        {9, -2.8f, -0.88f, 8.0f, -92.0f, 1.2f}
+        {9, -2.8f, -0.88f, 8.0f, -92.0f, 1.2f},
+        {6, -12.5f, -0.88f, -5.8f,  24.0f, 1.2f},
+        {8,  -8.8f, -0.88f, -9.4f, -62.0f, 1.2f},
+        {5,  -2.5f, -0.88f, -10.8f, 118.0f, 1.2f},
+        {9,   4.2f, -0.88f, -9.6f, -31.0f, 1.2f},
+        {7,  10.6f, -0.88f, -6.4f,  77.0f, 1.2f},
+        {8,  13.2f, -0.88f,  0.2f, -104.0f, 1.2f},
+        {6,  11.0f, -0.88f,  6.7f,  36.0f, 1.2f},
+        {5,   5.2f, -0.88f, 12.0f, -144.0f, 1.2f},
+        {9,  -1.4f, -0.88f, 14.1f,  58.0f, 1.2f},
+        {7,  -8.5f, -0.88f, 12.2f, -16.0f, 1.2f},
+        {6, -13.6f, -0.88f,  5.3f, 132.0f, 1.2f},
+        {8, -15.0f, -0.88f, -1.7f, -80.0f, 1.2f},
+        {5,  15.0f, -0.88f, -12.2f,  11.0f, 1.2f},
+        {9,  15.8f, -0.88f, 13.6f, -53.0f, 1.2f}
     };
 
     constexpr float kCoralModelMinY[kCoralModelCount] = {
@@ -268,10 +320,10 @@ bool Renderer::initialize()
     const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house_1.obj");
     const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
     const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
-    const bool characterLoaded = characterModel_.loadFromObj("assets/models/Spongebob_model/spongebob_model.obj");
+    const bool squidwardNpcLoaded = squidwardNpcModel_.loadFromObj("assets/models/squidward/squidward.obj");
+    const bool characterLoaded = animatedCharacterModel_.loadFromGlb("assets/models/Spongebob_model/spongebob.glb");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
     const bool garrLoaded = garyModel_.loadFromObj("assets/models/gary_pet/gary_pet.obj");
-    const bool rockLoaded = rockModel_.loadFromObj("assets/models/coral_rock/rock.obj");
     const bool coral1Loaded = coral1Model_.loadFromObj("assets/models/coral_rock/coral_1.obj");
     const bool coral2Loaded = coral2Model_.loadFromObj("assets/models/coral_rock/coral_2.obj");
     const bool coral3Loaded = coral3Model_.loadFromObj("assets/models/coral_rock/coral_3.obj");
@@ -284,9 +336,19 @@ bool Renderer::initialize()
     const bool coral10Loaded = coral10Model_.loadFromObj("assets/models/coral_rock/coral_10.obj");
     const bool bubbleLoaded = bubbleModel_.loadFromObj("assets/models/sphere.obj");
 
-    const bool spongebobTextureLoaded = true;
+    bool animatedSpongebobTextureLoaded = false;
+    if (animatedCharacterModel_.hasEmbeddedBaseColorTexture())
+    {
+        const std::vector<unsigned char>& imageData = animatedCharacterModel_.embeddedBaseColorTexture();
+        animatedSpongebobTextureLoaded = animatedSpongebobTexture_.loadImageData(imageData.data(), static_cast<int>(imageData.size()));
+    }
+    if (!animatedSpongebobTextureLoaded)
+    {
+        animatedSpongebobTexture_.createSolidColor(255, 214, 54);
+        animatedSpongebobTextureLoaded = true;
+    }
     spongebobFallbackTexture_.createSolidColor(255, 214, 54);
-   
+
     const bool skyboxResourcesCreated = createSkyboxResources();
     const bool shadowResourcesCreated = createShadowResources();
     glGenBuffers(1, &coralInstanceVbo_);
@@ -296,9 +358,10 @@ bool Renderer::initialize()
         spongebobLoaded &&
         patrickLoaded &&
         squidwardLoaded &&
+        squidwardNpcLoaded &&
         characterLoaded &&
         jellyfishLoaded &&
-        rockLoaded &&
+        garrLoaded &&
         coral1Loaded &&
         coral2Loaded &&
         coral3Loaded &&
@@ -309,44 +372,43 @@ bool Renderer::initialize()
         coral8Loaded &&
         coral9Loaded &&
         coral10Loaded &&
-        spongebobTextureLoaded &&
+        bubbleLoaded &&
+        animatedSpongebobTextureLoaded &&
         skyboxResourcesCreated &&
         shadowResourcesCreated &&
         coralInstanceVbo_ != 0;
 }
 
-void Renderer::render(const Scene& scene)
+void Renderer::render(Scene& scene)
 {
-    if (!coralTransformsInitialized_)
+    if (!staticTransformsInitialized_)
     {
-        initializeCoralTransforms(scene);
+        initializeStaticTransforms(scene);
     }
+    scene.clearCollisionBoxes();
 
     const glm::mat4 view = scene.getCamera().getViewMatrix();
     const glm::mat4 projection = scene.getCamera().getProjectionMatrix(scene.getAspectRatio());
     const glm::mat4 lightSpace = createLightSpaceMatrix();
     const int jellyfishCount = std::clamp(scene.getJellyfishCount(), 0, kJellyfishCount);
 
-    const glm::mat4 sand = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.95f, 0.0f));
-    const glm::mat4 spongebobModel = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, -2.7)),
-        glm::vec3(0.45f)
-    );
-    const glm::mat4 patrickModel = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -0.90f, -2.6f)),
-        glm::vec3(0.45f)
-    );
-    const glm::mat4 squidwardModel = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -2.6f)),
-        glm::vec3(0.45f)
+    const glm::mat4 sand = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.95f, 0.0f)),
+        glm::vec3(3.0f, 1.0f, 3.0f)
     );
     glm::vec3 charPos = scene.getCharacterPosition();
     float charYaw = scene.getCharacterYaw();
 
     glm::mat4 characterModel = glm::mat4(1.0f);
-    characterModel = glm::translate(characterModel, charPos); 
+    characterModel = glm::translate(characterModel, charPos);
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    characterModel = glm::scale(characterModel, glm::vec3(0.15f));
+    characterModel = glm::scale(characterModel, glm::vec3(0.45f));
+    const bool characterMoving = scene.isCharacterMoving();
+    animatedCharacterModel_.setActiveAnimation(characterMoving
+        ? "spongebob_idle01.anm.001"
+        : "spongebob_idle01.anm");
+    const float animationSpeed = characterMoving ? 1.7f : 1.0f;
+    animatedCharacterModel_.updateAnimation(scene.getElapsedTime() * animationSpeed);
     if (jellyfishCount > kLightJellyfishIndex)
     {
         pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, scene.getJellyfishAnimationTime(kLightJellyfishIndex)) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
@@ -362,12 +424,7 @@ void Renderer::render(const Scene& scene)
         glm::vec3(0.001f)
     );
 
-    glm::mat4 bubbleTransform = glm::mat4(1.0f);
-    bubbleTransform = glm::translate(bubbleTransform, glm::vec3(0.0f, 1.5f, 0.0f)); // Pozycja X, Y, Z
-    bubbleTransform = glm::scale(bubbleTransform, glm::vec3(0.1f));
-
-
-    renderShadowMap(lightSpace, spongebobModel, patrickModel, squidwardModel, characterModel, scene, jellyfishCount);
+    renderShadowMap(lightSpace, spongebobTransform_, patrickTransform_, squidwardTransform_, characterModel, scene, jellyfishCount);
 
     glViewport(0, 0, static_cast<GLsizei>(scene.getFramebufferWidth()), static_cast<GLsizei>(scene.getFramebufferHeight()));
     glClearColor(0.05f, 0.35f, 0.50f, 1.0f);
@@ -377,19 +434,46 @@ void Renderer::render(const Scene& scene)
     const float outlineThickness = scene.getOutlineThickness();
     const float smallModelOutlineThickness = outlineThickness * 0.32f;
 
-    renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.878f, 0.890f, 0.741f), 0.0f, 0.92f, false, nullptr, false, false, glm::vec3(0.04f, 0.12f, 0.13f), 0.0f, 0.96f, true);
-    renderModel(rockModel_, rockTransform_, view, projection, lightSpace, glm::vec3(0.38f, 0.33f, 0.29f), 0.0f, 1.15f, false, nullptr, true, false, glm::vec3(0.10f, 0.18f, 0.19f), 0.0f, 0.88f);
-    renderCoralsInstanced(view, projection, lightSpace);
-    renderModel(spongebobModel_, spongebobModel, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f);
-    renderModel(patrickModel_, patrickModel, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f);
-    renderModel(squidwardModel_, squidwardModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
-    renderModel(characterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f),smallModelOutlineThickness,1.4f, scene.isToonShadingEnabled(), &spongebobFallbackTexture_,false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
+    renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), 0.0f, 0.92f, false, nullptr, true, false, glm::vec3(0.04f, 0.12f, 0.13f), 0.0f, 0.96f, true);
+    renderCoralsInstanced(view, projection, lightSpace, outlineThickness, &scene);
+    renderModel(spongebobModel_, spongebobTransform_, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.85f);
+    renderModel(patrickModel_, patrickTransform_, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f, false, &scene, 0.0f, 0.85f);
+    renderModel(squidwardModel_, squidwardTransform_, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f, false, &scene, 0.0f, 0.85f);
+    renderModel(squidwardNpcModel_, squidwardNpcTransform_, view, projection, lightSpace, glm::vec3(0.54f, 0.76f, 0.78f), smallModelOutlineThickness, 1.8f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.65f);
+    renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
+    renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false, &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
     renderModel(garyModel_,garyModel, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f);
+
     for (int i = 0; i < jellyfishCount; ++i)
     {
         const bool isLightSource = i == kLightJellyfishIndex;
         const glm::vec3 jellyfishColor = isLightSource ? glm::vec3(0.45f, 0.95f, 1.0f) : glm::vec3(1.0f, 0.42f, 0.78f);
         renderModel(jellyfishModel_, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)), view, projection, lightSpace, jellyfishColor, smallModelOutlineThickness, isLightSource ? 2.2f : 1.6f, scene.isToonShadingEnabled(), nullptr, false, isLightSource, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, isLightSource ? 0.18f : 0.35f);
+    }
+    for (int i = 0; i < Scene::kCollectibleJellyfishCount; ++i)
+    {
+        if (!scene.isCollectibleJellyfishActive(i))
+        {
+            continue;
+        }
+
+        renderModel(
+            jellyfishModel_,
+            createCollectibleJellyfishTransform(scene.getCollectibleJellyfishPosition(i), i, scene.getElapsedTime()),
+            view,
+            projection,
+            lightSpace,
+            glm::vec3(1.0f, 0.86f, 0.16f),
+            smallModelOutlineThickness,
+            2.0f,
+            scene.isToonShadingEnabled(),
+            nullptr,
+            false,
+            true,
+            glm::vec3(0.18f, 0.30f, 0.34f),
+            0.0f,
+            0.22f
+        );
     }
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Standardowe mieszanie dla szkła/powietrza
@@ -410,10 +494,9 @@ void Renderer::shutdown()
     glDeleteBuffers(1, &coralInstanceVbo_);
     deleteShadowResources();
     deleteSkyboxResources();
-    spongebobTexture_.destroy();
+    animatedSpongebobTexture_.destroy();
     spongebobFallbackTexture_.destroy();
     jellyfishModel_.destroy();
-    rockModel_.destroy();
     coral10Model_.destroy();
     coral9Model_.destroy();
     coral8Model_.destroy();
@@ -425,10 +508,11 @@ void Renderer::shutdown()
     coral2Model_.destroy();
     coral1Model_.destroy();
     squidwardModel_.destroy();
+    squidwardNpcModel_.destroy();
     patrickModel_.destroy();
     spongebobModel_.destroy();
     sandModel_.destroy();
-    characterModel_.destroy();
+    animatedCharacterModel_.destroy();
     garyModel_.destroy();
     bubbleModel_.destroy();
     glDeleteProgram(skyboxProgram_);
@@ -442,7 +526,7 @@ void Renderer::shutdown()
     pbrProgram_ = 0;
     toonProgram_ = 0;
     coralInstanceVbo_ = 0;
-    coralTransformsInitialized_ = false;
+    staticTransformsInitialized_ = false;
 }
 
 bool Renderer::createSkyboxResources()
@@ -542,7 +626,7 @@ bool Renderer::createUnderwaterCubemap()
                         glm::vec3(0.98f, 0.40f, 0.18f),
                         glm::vec3(0.72f, 0.98f, 0.30f)
                     };
-                    
+
                     constexpr float panelWidth = 0.095f;
                     constexpr float panelMinY = -0.08f;
                     constexpr float panelMaxY = 0.12f;
@@ -639,7 +723,8 @@ void Renderer::deleteShadowResources()
     shadowFbo_ = 0;
 }
 
-void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const
+template <typename AssetModel>
+void Renderer::drawModelSurface(const AssetModel& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const
 {
     if (!assetModel.isLoaded())
     {
@@ -657,6 +742,7 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
         setMat4(outlineUniforms_.projection, projection);
         setFloat(outlineUniforms_.outlineThickness, outlineThickness);
         setVec3(outlineUniforms_.outlineColor, glm::vec3(0.0f, 0.04f, 0.22f));
+        setInt(outlineUniforms_.useInstancing, 0);
         assetModel.draw();
     }
 
@@ -687,21 +773,22 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
         setFloat(pbrUniforms_.pointLightRadius, pointLightRadius_);
         setInt(pbrUniforms_.useEmission, useEmission ? 1 : 0);
         setInt(pbrUniforms_.shadowMap, 1);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+        setInt(pbrUniforms_.diffuseTexture, 0);
         if (diffuseTexture != nullptr)
         {
-            setInt(pbrUniforms_.diffuseTexture, 0);
             diffuseTexture->bind(GL_TEXTURE0);
         }
+        else
+        {
+            spongebobFallbackTexture_.bind(GL_TEXTURE0);
+        }
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
 
         assetModel.draw();
 
-        if (diffuseTexture != nullptr)
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, 0);
         glActiveTexture(GL_TEXTURE0);
@@ -730,26 +817,154 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
     setFloat(toonUniforms_.pointLightRadius, pointLightRadius_);
     setInt(toonUniforms_.useEmission, useEmission ? 1 : 0);
     setInt(toonUniforms_.shadowMap, 1);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+    setInt(toonUniforms_.diffuseTexture, 0);
     if (diffuseTexture != nullptr)
     {
-        setInt(toonUniforms_.diffuseTexture, 0);
         diffuseTexture->bind(GL_TEXTURE0);
     }
+    else
+    {
+        spongebobFallbackTexture_.bind(GL_TEXTURE0);
+    }
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+
 
     assetModel.draw();
-    if (diffuseTexture != nullptr)
-    {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
 
     glUseProgram(0);
     glDisable(GL_CULL_FACE);
+}
+
+void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr, Scene* collisionScene, float collisionPadding, float collisionFootprintScale) const
+{
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+    if (collisionScene != nullptr)
+    {
+        addModelCollisionEllipse(*collisionScene, assetModel, model, collisionPadding, collisionFootprintScale);
+    }
+
+    glEnable(GL_CULL_FACE);
+
+    if (outlineThickness > 0.0f)
+    {
+        glCullFace(GL_FRONT);
+        glUseProgram(outlineProgram_);
+        setMat4(outlineUniforms_.model, model);
+        setMat4(outlineUniforms_.view, view);
+        setMat4(outlineUniforms_.projection, projection);
+        setFloat(outlineUniforms_.outlineThickness, outlineThickness);
+        setVec3(outlineUniforms_.outlineColor, glm::vec3(0.0f, 0.04f, 0.22f));
+        setInt(outlineUniforms_.useInstancing, 0);
+        assetModel.draw();
+    }
+
+    if (!useToonShading)
+    {
+        glCullFace(GL_BACK);
+        glUseProgram(pbrProgram_);
+        setMat4(pbrUniforms_.model, model);
+        setMat4(pbrUniforms_.view, view);
+        setMat4(pbrUniforms_.projection, projection);
+        setMat4(pbrUniforms_.lightSpaceMatrix, lightSpace);
+        setVec3(pbrUniforms_.baseColor, baseColor);
+        setVec3(pbrUniforms_.cameraPosition, glm::vec3(glm::inverse(view)[3]));
+        setVec3(pbrUniforms_.lightDirection, kLightDirection);
+        setVec3(pbrUniforms_.lightColor, glm::vec3(2.0f, 2.2f, 2.1f));
+        setVec3(pbrUniforms_.ambientColor, ambientColor);
+        setInt(pbrUniforms_.useMaterialColor, useMaterialColor ? 1 : 0);
+        setInt(pbrUniforms_.useDiffuseTexture, diffuseTexture != nullptr ? 1 : 0);
+        setFloat(pbrUniforms_.materialBrightness, materialBrightness);
+        setFloat(pbrUniforms_.metallic, metallic);
+        setFloat(pbrUniforms_.roughness, roughness);
+        setFloat(pbrUniforms_.ao, 1.0f);
+        setInt(pbrUniforms_.useFastPbr, useFastPbr ? 1 : 0);
+        setInt(pbrUniforms_.useInstancing, 0);
+        setVec3(pbrUniforms_.pointLightPosition, pointLightPosition_);
+        setVec3(pbrUniforms_.pointLightColor, pointLightColor_);
+        setFloat(pbrUniforms_.pointLightIntensity, pointLightIntensity_);
+        setFloat(pbrUniforms_.pointLightRadius, pointLightRadius_);
+        setInt(pbrUniforms_.useEmission, useEmission ? 1 : 0);
+        setInt(pbrUniforms_.shadowMap, 1);
+        setInt(pbrUniforms_.diffuseTexture, 0);
+        if (diffuseTexture != nullptr)
+        {
+            diffuseTexture->bind(GL_TEXTURE0);
+        }
+        else
+        {
+            spongebobFallbackTexture_.bind(GL_TEXTURE0);
+        }
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+
+        assetModel.draw();
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glUseProgram(0);
+        glDisable(GL_CULL_FACE);
+        return;
+    }
+
+    glCullFace(GL_BACK);
+    glUseProgram(toonProgram_);
+    setMat4(toonUniforms_.model, model);
+    setMat4(toonUniforms_.view, view);
+    setMat4(toonUniforms_.projection, projection);
+    setMat4(toonUniforms_.lightSpaceMatrix, lightSpace);
+    setVec3(toonUniforms_.baseColor, baseColor);
+    setVec3(toonUniforms_.lightDirection, kLightDirection);
+    setVec3(toonUniforms_.ambientColor, ambientColor);
+    setInt(toonUniforms_.useToonShading, useToonShading ? 1 : 0);
+    setInt(toonUniforms_.useMaterialColor, useMaterialColor ? 1 : 0);
+    setInt(toonUniforms_.useDiffuseTexture, diffuseTexture != nullptr ? 1 : 0);
+    setFloat(toonUniforms_.materialBrightness, materialBrightness);
+    setInt(toonUniforms_.useInstancing, 0);
+    setVec3(toonUniforms_.pointLightPosition, pointLightPosition_);
+    setVec3(toonUniforms_.pointLightColor, pointLightColor_);
+    setFloat(toonUniforms_.pointLightIntensity, pointLightIntensity_);
+    setFloat(toonUniforms_.pointLightRadius, pointLightRadius_);
+    setInt(toonUniforms_.useEmission, useEmission ? 1 : 0);
+    setInt(toonUniforms_.shadowMap, 1);
+    setInt(toonUniforms_.diffuseTexture, 0);
+    if (diffuseTexture != nullptr)
+    {
+        diffuseTexture->bind(GL_TEXTURE0);
+    }
+    else
+    {
+        spongebobFallbackTexture_.bind(GL_TEXTURE0);
+    }
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
+
+
+    assetModel.draw();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+
+    glUseProgram(0);
+    glDisable(GL_CULL_FACE);
+}
+
+void Renderer::renderAnimatedModel(const AnimatedModel& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const
+{
+    drawModelSurface(assetModel, model, view, projection, lightSpace, baseColor, outlineThickness, materialBrightness, useToonShading, diffuseTexture, useMaterialColor, useEmission, ambientColor, metallic, roughness, useFastPbr);
 }
 
 void Renderer::renderSkybox(const glm::mat4& view, const glm::mat4& projection) const
@@ -786,12 +1001,24 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     renderModelShadowCaster(spongebobModel_, lightSpace, spongebobTransform);
     renderModelShadowCaster(patrickModel_, lightSpace, patrickTransform);
     renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
-    renderModelShadowCaster(characterModel_, lightSpace, characterTransform);
-    renderModelShadowCaster(rockModel_, lightSpace, rockTransform_);
+    renderModelShadowCaster(squidwardNpcModel_, lightSpace, squidwardNpcTransform_);
+    renderAnimatedModelShadowCaster(animatedCharacterModel_, lightSpace, characterTransform);
+    renderVillageHouseShadowCasters(lightSpace);
     renderCoralShadowCastersInstanced(lightSpace);
     for (int i = 0; i < jellyfishCount; ++i)
     {
         renderModelShadowCaster(jellyfishModel_, lightSpace, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)));
+    }
+    for (int i = 0; i < Scene::kCollectibleJellyfishCount; ++i)
+    {
+        if (scene.isCollectibleJellyfishActive(i))
+        {
+            renderModelShadowCaster(
+                jellyfishModel_,
+                lightSpace,
+                createCollectibleJellyfishTransform(scene.getCollectibleJellyfishPosition(i), i, scene.getElapsedTime())
+            );
+        }
     }
     glUseProgram(0);
     glDisable(GL_CULL_FACE);
@@ -812,6 +1039,60 @@ void Renderer::renderModelShadowCaster(const Model& assetModel, const glm::mat4&
     assetModel.draw();
 }
 
+void Renderer::renderAnimatedModelShadowCaster(const AnimatedModel& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const
+{
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+
+    setMat4(shadowUniforms_.model, model);
+    setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
+    setInt(shadowUniforms_.useInstancing, 0);
+    assetModel.draw();
+}
+
+void Renderer::renderVillageHouses(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, float outlineThickness, bool useToonShading, Scene* collisionScene) const
+{
+    for (int i = 0; i < kVillageHouseCount; ++i)
+    {
+        const int modelIndex = i % 3;
+        const float modelOutlineThickness = modelIndex == 2 ? outlineThickness * 1.25f : outlineThickness;
+        const float materialBrightness = modelIndex == 2 ? 4.4f : 2.6f;
+        const float metallic = modelIndex == 2 ? 0.15f : 0.0f;
+        const float roughness = modelIndex == 0 ? 0.58f : (modelIndex == 1 ? 0.88f : 0.42f);
+        renderModel(
+            getHouseModel(modelIndex),
+            villageHouseTransforms_[static_cast<std::size_t>(i)],
+            view,
+            projection,
+            lightSpace,
+            getHouseColor(modelIndex),
+            modelOutlineThickness,
+            materialBrightness,
+            useToonShading,
+            nullptr,
+            true,
+            false,
+            glm::vec3(0.18f, 0.30f, 0.34f),
+            metallic,
+            roughness,
+            false,
+            collisionScene,
+            0.0f,
+            0.85f
+        );
+    }
+}
+
+void Renderer::renderVillageHouseShadowCasters(const glm::mat4& lightSpace) const
+{
+    for (int i = 0; i < kVillageHouseCount; ++i)
+    {
+        renderModelShadowCaster(getHouseModel(i % 3), lightSpace, villageHouseTransforms_[static_cast<std::size_t>(i)]);
+    }
+}
+
 void Renderer::renderCoralShadowCastersInstanced(const glm::mat4& lightSpace) const
 {
     std::array<std::vector<glm::mat4>, kCoralModelCount> transformsByModel;
@@ -819,6 +1100,11 @@ void Renderer::renderCoralShadowCastersInstanced(const glm::mat4& lightSpace) co
     {
         const int modelIndex = kCoralPlacements[i].modelIndex % kCoralModelCount;
         transformsByModel[static_cast<std::size_t>(modelIndex)].push_back(coralTransforms_[static_cast<std::size_t>(i)]);
+    }
+    for (int i = 0; i < kVillageCoralCount; ++i)
+    {
+        const int modelIndex = kVillageCoralModelIndices[i] % kCoralModelCount;
+        transformsByModel[static_cast<std::size_t>(modelIndex)].push_back(villageCoralTransforms_[static_cast<std::size_t>(i)]);
     }
 
     setMat4(shadowUniforms_.model, glm::mat4(1.0f));
@@ -845,16 +1131,58 @@ void Renderer::renderCoralShadowCastersInstanced(const glm::mat4& lightSpace) co
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Renderer::renderCoralsInstanced(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace) const
+void Renderer::renderCoralsInstanced(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, float outlineThickness, Scene* collisionScene) const
 {
     std::array<std::vector<glm::mat4>, kCoralModelCount> transformsByModel;
     for (int i = 0; i < kVisibleCoralInstanceCount; ++i)
     {
         const int modelIndex = kCoralPlacements[i].modelIndex % kCoralModelCount;
-        transformsByModel[static_cast<std::size_t>(modelIndex)].push_back(coralTransforms_[static_cast<std::size_t>(i)]);
+        const glm::mat4& transform = coralTransforms_[static_cast<std::size_t>(i)];
+        transformsByModel[static_cast<std::size_t>(modelIndex)].push_back(transform);
+        if (collisionScene != nullptr)
+        {
+            addModelCollisionEllipse(*collisionScene, getCoralModel(modelIndex), transform, 0.0f, 0.75f);
+        }
+    }
+    for (int i = 0; i < kVillageCoralCount; ++i)
+    {
+        const int modelIndex = kVillageCoralModelIndices[i] % kCoralModelCount;
+        const glm::mat4& transform = villageCoralTransforms_[static_cast<std::size_t>(i)];
+        transformsByModel[static_cast<std::size_t>(modelIndex)].push_back(transform);
+        if (collisionScene != nullptr)
+        {
+            addModelCollisionEllipse(*collisionScene, getCoralModel(modelIndex), transform, 0.0f, 0.65f);
+        }
     }
 
     glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+    glUseProgram(outlineProgram_);
+    setMat4(outlineUniforms_.model, glm::mat4(1.0f));
+    setMat4(outlineUniforms_.view, view);
+    setMat4(outlineUniforms_.projection, projection);
+    setFloat(outlineUniforms_.outlineThickness, outlineThickness * 0.32f);
+    setVec3(outlineUniforms_.outlineColor, glm::vec3(0.0f, 0.04f, 0.22f));
+    setInt(outlineUniforms_.useInstancing, 1);
+
+    for (int modelIndex = 0; modelIndex < kCoralModelCount; ++modelIndex)
+    {
+        const std::vector<glm::mat4>& transforms = transformsByModel[static_cast<std::size_t>(modelIndex)];
+        if (transforms.empty())
+        {
+            continue;
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, coralInstanceVbo_);
+        glBufferData(
+            GL_ARRAY_BUFFER,
+            static_cast<GLsizeiptr>(transforms.size() * sizeof(glm::mat4)),
+            transforms.data(),
+            GL_DYNAMIC_DRAW
+        );
+        getCoralModel(modelIndex).drawInstanced(coralInstanceVbo_, static_cast<GLsizei>(transforms.size()));
+    }
+
     glCullFace(GL_BACK);
     glUseProgram(toonProgram_);
     setMat4(toonUniforms_.model, glm::mat4(1.0f));
@@ -875,6 +1203,8 @@ void Renderer::renderCoralsInstanced(const glm::mat4& view, const glm::mat4& pro
     setFloat(toonUniforms_.pointLightRadius, pointLightRadius_);
     setInt(toonUniforms_.useEmission, 0);
     setInt(toonUniforms_.shadowMap, 1);
+    setInt(toonUniforms_.diffuseTexture, 0);
+    spongebobFallbackTexture_.bind(GL_TEXTURE0);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
 
@@ -897,6 +1227,8 @@ void Renderer::renderCoralsInstanced(const glm::mat4& view, const glm::mat4& pro
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
@@ -921,26 +1253,188 @@ const Model& Renderer::getCoralModel(int modelIndex) const
     }
 }
 
-void Renderer::initializeCoralTransforms(const Scene& scene)
+const Model& Renderer::getHouseModel(int modelIndex) const
 {
-    rockTransform_ = createRockTransform(scene);
-    rockTopY_ = scene.getSandHeight(kRockX, kRockZ) - kRockModelMinY * kRockScale + kRockModelMaxY * kRockScale;
+    switch (modelIndex % 3)
+    {
+        case 0: return spongebobModel_;
+        case 1: return patrickModel_;
+        default: return squidwardModel_;
+    }
+}
+
+glm::vec3 Renderer::getHouseColor(int modelIndex) const
+{
+    switch (modelIndex % 3)
+    {
+        case 0: return glm::vec3(1.0f, 0.72f, 0.20f);
+        case 1: return glm::vec3(0.76f, 0.48f, 0.38f);
+        default: return glm::vec3(0.48f, 0.66f, 0.70f);
+    }
+}
+
+void Renderer::initializeStaticTransforms(Scene& scene)
+{
+    spongebobTransform_ = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.90f, -3.0f)),
+        glm::vec3(0.45f)
+    );
+    patrickTransform_ = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -0.90f, -2.6f)),
+        glm::vec3(0.45f)
+    );
+    squidwardTransform_ = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.20f, -2.6f)),
+        glm::vec3(0.45f)
+    );
+    squidwardNpcTransform_ = glm::scale(
+        glm::rotate(
+            glm::translate(
+                glm::mat4(1.0f),
+                glm::vec3(
+                    kSquidwardNpcX,
+                    scene.getSandHeight(kSquidwardNpcX, kSquidwardNpcZ) - squidwardNpcModel_.minY() * kSquidwardNpcScale,
+                    kSquidwardNpcZ
+                )
+            ),
+            glm::radians(-90.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        ),
+        glm::vec3(kSquidwardNpcScale)
+    );
     for (int i = 0; i < kCoralPlacementCount; ++i)
     {
         coralTransforms_[static_cast<std::size_t>(i)] = createCoralTransform(i, scene);
     }
-    coralTransformsInitialized_ = true;
+    for (int i = 0; i < kVillageHouseCount; ++i)
+    {
+        villageHouseTransforms_[static_cast<std::size_t>(i)] = createVillageHouseTransform(i, scene);
+    }
+    for (int i = 0; i < kVillageCoralCount; ++i)
+    {
+        villageCoralTransforms_[static_cast<std::size_t>(i)] = createVillageCoralTransform(i, scene);
+    }
+    staticTransformsInitialized_ = true;
 }
 
-glm::mat4 Renderer::createRockTransform(const Scene& scene) const
+void Renderer::addModelCollision(Scene& scene, const Model& assetModel, const glm::mat4& model, float padding, float footprintScale) const
 {
-    const float sandY = scene.getSandHeight(kRockX, kRockZ);
-    const float y = sandY - kRockModelMinY * kRockScale;
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+
+    const glm::vec3 minBounds = assetModel.minBounds();
+    const glm::vec3 maxBounds = assetModel.maxBounds();
+    const glm::vec3 corners[] = {
+        glm::vec3(minBounds.x, minBounds.y, minBounds.z),
+        glm::vec3(minBounds.x, minBounds.y, maxBounds.z),
+        glm::vec3(minBounds.x, maxBounds.y, minBounds.z),
+        glm::vec3(minBounds.x, maxBounds.y, maxBounds.z),
+        glm::vec3(maxBounds.x, minBounds.y, minBounds.z),
+        glm::vec3(maxBounds.x, minBounds.y, maxBounds.z),
+        glm::vec3(maxBounds.x, maxBounds.y, minBounds.z),
+        glm::vec3(maxBounds.x, maxBounds.y, maxBounds.z)
+    };
+
+    glm::vec2 minWorld(std::numeric_limits<float>::max());
+    glm::vec2 maxWorld(std::numeric_limits<float>::lowest());
+    for (const glm::vec3& corner : corners)
+    {
+        const glm::vec4 world = model * glm::vec4(corner, 1.0f);
+        minWorld.x = std::min(minWorld.x, world.x);
+        minWorld.y = std::min(minWorld.y, world.z);
+        maxWorld.x = std::max(maxWorld.x, world.x);
+        maxWorld.y = std::max(maxWorld.y, world.z);
+    }
+
+    const glm::vec2 center = (minWorld + maxWorld) * 0.5f;
+    const glm::vec2 halfSize = (maxWorld - minWorld) * 0.5f * std::clamp(footprintScale, 0.05f, 1.0f);
+    scene.addCollisionBox(
+        center - halfSize - glm::vec2(padding),
+        center + halfSize + glm::vec2(padding)
+    );
+}
+
+void Renderer::addModelCollisionEllipse(Scene& scene, const Model& assetModel, const glm::mat4& model, float padding, float footprintScale) const
+{
+    if (!assetModel.isLoaded())
+    {
+        return;
+    }
+
+    const glm::vec3 minBounds = assetModel.minBounds();
+    const glm::vec3 maxBounds = assetModel.maxBounds();
+    const glm::vec3 corners[] = {
+        glm::vec3(minBounds.x, minBounds.y, minBounds.z),
+        glm::vec3(minBounds.x, minBounds.y, maxBounds.z),
+        glm::vec3(minBounds.x, maxBounds.y, minBounds.z),
+        glm::vec3(minBounds.x, maxBounds.y, maxBounds.z),
+        glm::vec3(maxBounds.x, minBounds.y, minBounds.z),
+        glm::vec3(maxBounds.x, minBounds.y, maxBounds.z),
+        glm::vec3(maxBounds.x, maxBounds.y, minBounds.z),
+        glm::vec3(maxBounds.x, maxBounds.y, maxBounds.z)
+    };
+
+    glm::vec2 minWorld(std::numeric_limits<float>::max());
+    glm::vec2 maxWorld(std::numeric_limits<float>::lowest());
+    for (const glm::vec3& corner : corners)
+    {
+        const glm::vec4 world = model * glm::vec4(corner, 1.0f);
+        minWorld.x = std::min(minWorld.x, world.x);
+        minWorld.y = std::min(minWorld.y, world.z);
+        maxWorld.x = std::max(maxWorld.x, world.x);
+        maxWorld.y = std::max(maxWorld.y, world.z);
+    }
+
+    const glm::vec2 center = (minWorld + maxWorld) * 0.5f;
+    const glm::vec2 radii = (maxWorld - minWorld) * 0.5f * std::clamp(footprintScale, 0.05f, 1.0f) + glm::vec2(padding);
+    scene.addCollisionEllipse(center, radii);
+}
+
+glm::mat4 Renderer::createVillageHouseTransform(int index, const Scene& scene) const
+{
+    const int villageIndex = index / 3;
+    const int houseIndex = index % 3;
+    const VillagePlacement& village = kVillagePlacements[villageIndex];
+    const float yaw = glm::radians(village.yawDegrees);
+    const glm::mat2 rotation(
+        std::cos(yaw), std::sin(yaw),
+        -std::sin(yaw), std::cos(yaw)
+    );
+    const glm::vec2 offset = rotation * kVillageHouseOffsets[houseIndex];
+    const float x = village.x + offset.x;
+    const float z = village.z + offset.y;
+    const float yOffset = houseIndex == 2 ? -0.25f : 0.05f;
 
     glm::mat4 model(1.0f);
-    model = glm::translate(model, glm::vec3(kRockX, y, kRockZ));
-    model = glm::rotate(model, glm::radians(-12.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(kRockScale));
+    model = glm::translate(model, glm::vec3(x, scene.getSandHeight(x, z) + yOffset, z));
+    model = glm::rotate(model, yaw + glm::radians(static_cast<float>(houseIndex) * 120.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.45f));
+    return model;
+}
+
+glm::mat4 Renderer::createVillageCoralTransform(int index, const Scene& scene) const
+{
+    const int villageIndex = index / 5;
+    const int coralIndex = index % 5;
+    const VillagePlacement& village = kVillagePlacements[villageIndex];
+    const int modelIndex = kVillageCoralModelIndices[index] % kCoralModelCount;
+    const float yaw = glm::radians(village.yawDegrees);
+    const glm::mat2 rotation(
+        std::cos(yaw), std::sin(yaw),
+        -std::sin(yaw), std::cos(yaw)
+    );
+    const glm::vec2 offset = rotation * kVillageCoralOffsets[coralIndex];
+    const float x = village.x + offset.x;
+    const float z = village.z + offset.y;
+    constexpr float scale = 1.2f;
+    const float y = scene.getSandHeight(x, z) - kCoralModelMinY[modelIndex] * scale;
+
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, glm::vec3(x, y, z));
+    model = glm::rotate(model, yaw + glm::radians(static_cast<float>((index * 47) % 360)), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(scale));
     return model;
 }
 
@@ -951,9 +1445,7 @@ glm::mat4 Renderer::createCoralTransform(int index, const Scene& scene) const
     const float scale = placement.scale;
     const float highFaceLowerOffset = modelIndex < 5 ? kHighFaceCoralLowerOffset : 0.0f;
     const float sandY = scene.getSandHeight(placement.x, placement.z);
-    const float y = index < kRockCoralCount
-        ? rockTopY_ - kCoralModelMinY[modelIndex] * scale - kRockCoralEmbedDepth - highFaceLowerOffset
-        : sandY - kCoralModelMinY[modelIndex] * scale - highFaceLowerOffset;
+    const float y = sandY - kCoralModelMinY[modelIndex] * scale - highFaceLowerOffset;
 
     glm::mat4 model(1.0f);
     model = glm::translate(model, glm::vec3(placement.x, y, placement.z));
@@ -1004,16 +1496,41 @@ glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
     return model;
 }
 
+glm::mat4 Renderer::createCollectibleJellyfishTransform(const glm::vec3& position, int index, float elapsedTime) const
+{
+    const float t = elapsedTime * 1.15f + static_cast<float>(index) * 1.37f;
+    const float pulse = std::sin(t * 2.8f);
+    const float hover = std::sin(t * 1.7f) * 0.12f;
+    const float yaw = t * 0.55f;
+    const float scaleX = 0.42f * (1.0f + 0.08f * std::max(0.0f, pulse));
+    const float scaleY = 0.20f * (1.0f - 0.18f * std::abs(pulse));
+    const float scaleZ = 0.42f * (1.0f + 0.08f * std::max(0.0f, pulse));
+
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, position + glm::vec3(0.0f, hover, 0.0f));
+    model = glm::rotate(model, yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(4.0f) * pulse, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(scaleX, scaleY, scaleZ));
+    return model;
+}
+
 glm::mat4 Renderer::createLightSpaceMatrix() const
 {
     const glm::vec3 lightTarget(0.0f, -0.4f, 0.0f);
-    const glm::vec3 lightPosition = lightTarget - kLightDirection * 18.0f;
+    const glm::vec3 lightPosition = lightTarget - kLightDirection * kShadowLightDistance;
     const glm::mat4 lightView = glm::lookAt(
         lightPosition,
         lightTarget,
         glm::vec3(0.0f, 1.0f, 0.0f)
     );
-    const glm::mat4 lightProjection = glm::ortho(-16.0f, 16.0f, -16.0f, 16.0f, 0.1f, 36.0f);
+    const glm::mat4 lightProjection = glm::ortho(
+        -kShadowOrthoExtent,
+        kShadowOrthoExtent,
+        -kShadowOrthoExtent,
+        kShadowOrthoExtent,
+        0.1f,
+        kShadowFarPlane
+    );
     return lightProjection * lightView;
 }
 
@@ -1024,6 +1541,7 @@ void Renderer::cacheUniformLocations()
     outlineUniforms_.projection = getUniformLocation(outlineProgram_, "uProjection");
     outlineUniforms_.outlineThickness = getUniformLocation(outlineProgram_, "uOutlineThickness");
     outlineUniforms_.outlineColor = getUniformLocation(outlineProgram_, "uOutlineColor");
+    outlineUniforms_.useInstancing = getUniformLocation(outlineProgram_, "uUseInstancing");
 
     pbrUniforms_.model = getUniformLocation(pbrProgram_, "uModel");
     pbrUniforms_.view = getUniformLocation(pbrProgram_, "uView");

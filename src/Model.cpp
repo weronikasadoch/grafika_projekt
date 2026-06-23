@@ -1,13 +1,18 @@
 #include "Model.h"
 
+#include <algorithm>
 
 #include <array>
 #include <cstddef>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <vector>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 namespace
 {
@@ -102,6 +107,47 @@ namespace
     }
 }
 
+bool Texture::loadImage(const std::string& path)
+{
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    stbi_uc* pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    if (pixels == nullptr || width <= 0 || height <= 0)
+    {
+        std::cerr << "Failed to load image texture: " << path << '\n';
+        stbi_image_free(pixels);
+        return false;
+    }
+
+    uploadTexture(texture_, width, height, GL_RGBA, pixels);
+    stbi_image_free(pixels);
+    return true;
+}
+
+bool Texture::loadImageData(const unsigned char* data, int size)
+{
+    if (data == nullptr || size <= 0)
+    {
+        return false;
+    }
+
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    stbi_uc* pixels = stbi_load_from_memory(data, size, &width, &height, &channels, STBI_rgb_alpha);
+    if (pixels == nullptr || width <= 0 || height <= 0)
+    {
+        std::cerr << "Failed to load image texture from GLB data\n";
+        stbi_image_free(pixels);
+        return false;
+    }
+
+    uploadTexture(texture_, width, height, GL_RGBA, pixels);
+    stbi_image_free(pixels);
+    return true;
+}
+
 bool Texture::loadPPM(const std::string& path)
 {
     std::ifstream file(path, std::ios::binary);
@@ -154,6 +200,8 @@ void Texture::destroy()
 bool Model::loadFromObj(const std::string& path)
 {
     destroy();
+    minBounds_ = glm::vec3(0.0f);
+    maxBounds_ = glm::vec3(0.0f);
 
     std::ifstream file(path);
     if (!file)
@@ -170,6 +218,8 @@ bool Model::loadFromObj(const std::string& path)
     std::map<std::string, std::array<float, 3>> materials;
     std::array<float, 3> currentColor = {1.0f, 1.0f, 1.0f};
     const std::string directory = getDirectory(path);
+    glm::vec3 minBounds(std::numeric_limits<float>::max());
+    glm::vec3 maxBounds(std::numeric_limits<float>::lowest());
 
     std::string line;
     while (std::getline(file, line))
@@ -196,6 +246,12 @@ bool Model::loadFromObj(const std::string& path)
             std::array<float, 3> position = {};
             stream >> position[0] >> position[1] >> position[2];
             positions.push_back(position);
+            minBounds.x = std::min(minBounds.x, position[0]);
+            minBounds.y = std::min(minBounds.y, position[1]);
+            minBounds.z = std::min(minBounds.z, position[2]);
+            maxBounds.x = std::max(maxBounds.x, position[0]);
+            maxBounds.y = std::max(maxBounds.y, position[1]);
+            maxBounds.z = std::max(maxBounds.z, position[2]);
         }
         else if (command == "vt")
         {
@@ -265,6 +321,8 @@ bool Model::loadFromObj(const std::string& path)
     }
 
     indexCount_ = static_cast<GLsizei>(indices.size());
+    minBounds_ = minBounds;
+    maxBounds_ = maxBounds;
 
     glGenVertexArrays(1, &vao_);
     glGenBuffers(1, &vbo_);
@@ -339,4 +397,6 @@ void Model::destroy()
     vbo_ = 0;
     ebo_ = 0;
     indexCount_ = 0;
+    minBounds_ = glm::vec3(0.0f);
+    maxBounds_ = glm::vec3(0.0f);
 }

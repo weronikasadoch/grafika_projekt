@@ -21,6 +21,8 @@ add_executable(grafika_projekt
     "${APP_SOURCE_DIR}/Renderer.cpp"
     "${APP_SOURCE_DIR}/Model.h"
     "${APP_SOURCE_DIR}/Model.cpp"
+    "${APP_SOURCE_DIR}/AnimatedModel.h"
+    "${APP_SOURCE_DIR}/AnimatedModel.cpp"
     "${APP_SOURCE_DIR}/Render_Utils.h"
     "${APP_SOURCE_DIR}/Render_Utils.cpp"
     "${APP_SOURCE_DIR}/Shader_Loader.h"
