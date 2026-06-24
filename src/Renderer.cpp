@@ -64,13 +64,13 @@ namespace
         {  5.0f,  22.0f,  12.0f}
     };
 
-    constexpr glm::vec2 kVillageHouseOffsets[3] = {
+    const glm::vec2 kVillageHouseOffsets[3] = {
         glm::vec2(0.0f, -1.15f),
         glm::vec2(-1.45f, 1.05f),
         glm::vec2(1.45f, 1.05f)
     };
 
-    constexpr glm::vec2 kVillageCoralOffsets[5] = {
+    const glm::vec2 kVillageCoralOffsets[5] = {
         glm::vec2(-2.15f, -2.25f),
         glm::vec2( 2.20f, -2.05f),
         glm::vec2(-2.35f,  2.20f),

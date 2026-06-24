@@ -21,8 +21,8 @@ namespace
     constexpr float kFallbackSandHeight = -1.0f;
     constexpr float kSquidwardQuestRadius = 1.35f;
     constexpr float kCollectibleJellyfishPickupRadius = 1.05f;
-    constexpr glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
-    constexpr glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
+    const glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
+    const glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
         glm::vec3(24.6f, 0.12f,  5.4f),
         glm::vec3(25.2f, 0.18f,  6.7f),
         glm::vec3(24.7f, 0.10f,  8.0f),
