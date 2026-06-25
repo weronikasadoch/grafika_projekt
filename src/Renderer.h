@@ -5,7 +5,7 @@
 
 #include "AnimatedModel.h"
 #include "Model.h"
-
+#include "ModelLoader.h"
 #include <array>
 
 class Scene;
@@ -99,7 +99,7 @@ private:
     void drawModelSurface(const AssetModel& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const;
     void renderCoralsInstanced(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, float outlineThickness, Scene* collisionScene) const;
     void renderSkybox(const glm::mat4& view, const glm::mat4& projection) const;
-    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const Scene& scene, int jellyfishCount) const;
+    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const Scene& scene, int jellyfishCount  ) const;
     void renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderAnimatedModelShadowCaster(const AnimatedModel& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
     void renderCoralShadowCastersInstanced(const glm::mat4& lightSpace) const;
@@ -116,7 +116,7 @@ private:
     void addModelCollision(Scene& scene, const Model& assetModel, const glm::mat4& model, float padding = 0.0f, float footprintScale = 0.72f) const;
     void addModelCollisionEllipse(Scene& scene, const Model& assetModel, const glm::mat4& model, float padding = 0.0f, float footprintScale = 0.72f) const;
     const Model& getCoralModel(int modelIndex) const;
-    const Model& getHouseModel(int modelIndex) const;
+    //const Model& getHouseModel(int modelIndex) const;
     glm::vec3 getHouseColor(int modelIndex) const;
     glm::mat4 createVillageHouseTransform(int index, const Scene& scene) const;
     glm::mat4 createVillageCoralTransform(int index, const Scene& scene) const;
@@ -156,15 +156,20 @@ private:
     glm::mat4 patrickTransform_ = glm::mat4(1.0f);
     glm::mat4 squidwardTransform_ = glm::mat4(1.0f);
     glm::mat4 squidwardNpcTransform_ = glm::mat4(1.0f);
+    glm::mat4 patrickNpcTransform_;
     bool staticTransformsInitialized_ = false;
     Model sandModel_;
-    Model spongebobModel_;
-    Model patrickModel_;
-    Model squidwardModel_;
+    AssimpModel spongebobModel_;
+    AssimpModel patrickModel_;
+    AssimpModel squidwardModel_;
     Model squidwardNpcModel_;
     AnimatedModel animatedCharacterModel_;
+    AnimatedModel patrickNpcModel_;
     Model jellyfishModel_;
-    Model garyModel_;
+    //Model garyModel_;
+    //AnimatedModel garyModel_;
+    AssimpModel garyModel_;
+    Texture garyTexture_;
     Model bubbleModel_;
     Model coral1Model_;
     Model coral2Model_;
@@ -178,5 +183,5 @@ private:
     Model coral10Model_;
     Texture spongebobFallbackTexture_;
     Texture animatedSpongebobTexture_;
-
+    Texture patrickNpcTexture_;
 };

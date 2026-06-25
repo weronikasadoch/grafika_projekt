@@ -14,6 +14,63 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+struct MaterialInfo
+{
+    std::array<float, 3> kd = { 1.0f,1.0f,1.0f };
+    std::string mapKd; // texture filename if present
+};
+
+std::map<std::string, MaterialInfo> loadMtlMaterials(const std::string& path)
+{
+    std::map<std::string, MaterialInfo> materials;
+    std::ifstream file(path);
+    if (!file)
+    {
+        return materials;
+    }
+
+    std::string line;
+    std::string activeMaterial;
+    while (std::getline(file, line))
+    {
+        std::stringstream stream(line);
+        std::string command;
+        stream >> command;
+
+        if (command == "newmtl")
+        {
+            stream >> activeMaterial;
+            materials[activeMaterial] = MaterialInfo{};
+        }
+        else if (command == "Kd" && !activeMaterial.empty())
+        {
+            std::array<float, 3> color = { 1.0f, 1.0f, 1.0f };
+            stream >> color[0] >> color[1] >> color[2];
+            materials[activeMaterial].kd = color;
+        }
+        else if ((command == "map_Kd" || command == "map_kd") && !activeMaterial.empty())
+        {
+            std::string textureFile;
+            // map_Kd may have options; simplest: read the last token as filename
+            // read remaining tokens and take the last non-empty
+            std::string token;
+            std::string lastToken;
+            while (stream >> token)
+            {
+                lastToken = token;
+            }
+            if (!lastToken.empty())
+            {
+                materials[activeMaterial].mapKd = lastToken;
+            }
+        }
+    }
+
+    return materials;
+}
+
+
+
 namespace
 {
     constexpr int kVertexStride = 11;
@@ -215,13 +272,15 @@ bool Model::loadFromObj(const std::string& path)
     std::vector<std::array<float, 3>> positions;
     std::vector<std::array<float, 2>> texCoords;
     std::vector<std::array<float, 3>> normals;
-    std::map<std::string, std::array<float, 3>> materials;
+    std::map<std::string, MaterialInfo > materials;
     std::array<float, 3> currentColor = {1.0f, 1.0f, 1.0f};
+    std::string currentMaterialTexture;
     const std::string directory = getDirectory(path);
     glm::vec3 minBounds(std::numeric_limits<float>::max());
     glm::vec3 maxBounds(std::numeric_limits<float>::lowest());
 
     std::string line;
+    //std::string activeMaterial;
     while (std::getline(file, line))
     {
         std::stringstream stream(line);
@@ -232,15 +291,42 @@ bool Model::loadFromObj(const std::string& path)
         {
             std::string materialFile;
             stream >> materialFile;
-            materials = loadMtlDiffuseColors(directory + materialFile);
+            materials = loadMtlMaterials(directory + materialFile); //loadMtlDiffuseColors(directory + materialFile);
         }
         else if (command == "usemtl")
         {
             std::string materialName;
             stream >> materialName;
-            const auto material = materials.find(materialName);
-            currentColor = material != materials.end() ? material->second : std::array<float, 3>{1.0f, 1.0f, 1.0f};
+            const auto it = materials.find(materialName);//material = materials.find(materialName);
+            //currentColor = material != materials.end() ? material->second : std::array<float, 3>{1.0f, 1.0f, 1.0f};
+            if (it != materials.end())
+            {
+                currentColor = it->second.kd;
+                currentMaterialTexture = it->second.mapKd;
+                // load the first diffuse texture we encounter (model-level fallback)
+                if (!hasDiffuseTexture_ && !currentMaterialTexture.empty())
+                {
+                    const std::string texturePath = directory + currentMaterialTexture;
+                    if (diffuseTexture_.loadImage(texturePath))
+                    {
+                        hasDiffuseTexture_ = true;
+                    }
+                    else
+                    {
+                        // keep trying other materials; do not treat as fatal
+                        hasDiffuseTexture_ = false;
+                    }
+                }
+            }
+            else
+            {
+                currentColor = { 1.0f, 1.0f, 1.0f };
+                currentMaterialTexture.clear();
+            }
+        
         }
+        
+        
         else if (command == "v")
         {
             std::array<float, 3> position = {};
@@ -399,4 +485,10 @@ void Model::destroy()
     indexCount_ = 0;
     minBounds_ = glm::vec3(0.0f);
     maxBounds_ = glm::vec3(0.0f);
+
+    if (hasDiffuseTexture_)
+    {
+        diffuseTexture_.destroy();
+        hasDiffuseTexture_ = false;
+    }
 }

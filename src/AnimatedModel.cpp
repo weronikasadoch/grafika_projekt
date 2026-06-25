@@ -85,6 +85,7 @@ struct AnimatedModel::Impl
         glm::vec3 baseScale = glm::vec3(1.0f);
         glm::mat4 baseMatrix = glm::mat4(1.0f);
         bool hasMatrix = false;
+        bool originalHasMatrix = false;
         glm::vec3 translation = glm::vec3(0.0f);
         glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
         glm::vec3 scale = glm::vec3(1.0f);
@@ -143,6 +144,7 @@ struct AnimatedModel::Impl
             node.translation = node.baseTranslation;
             node.rotation = node.baseRotation;
             node.scale = node.baseScale;
+            node.hasMatrix = node.originalHasMatrix;
         }
     }
 
@@ -258,6 +260,7 @@ bool AnimatedModel::loadFromGlb(const std::string& path)
         node.baseRotation = source.has_rotation ? makeQuat(source.rotation) : glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
         node.baseScale = source.has_scale ? makeVec3(source.scale, glm::vec3(1.0f)) : glm::vec3(1.0f);
         node.hasMatrix = source.has_matrix;
+        node.originalHasMatrix = source.has_matrix;
         node.baseMatrix = source.has_matrix ? makeMat4(source.matrix) : glm::mat4(1.0f);
         node.translation = node.baseTranslation;
         node.rotation = node.baseRotation;
@@ -464,13 +467,18 @@ bool AnimatedModel::loadFromGlb(const std::string& path)
             impl_->animations.push_back(animation);
         }
     }
-
+    
     setActiveAnimation("spongebob_idle01.anm");
     if (impl_->activeAnimation < 0 && !impl_->animations.empty())
     {
         impl_->activeAnimation = 0;
     }
-
+    /*
+    if (!setActiveAnimation("spongebob_idle01.anm") && !impl_->animations.empty())
+    {
+        impl_->activeAnimation = 0;
+    }
+    */
     cgltf_free(data);
 
     indexCount_ = static_cast<GLsizei>(impl_->indices.size());
@@ -566,6 +574,7 @@ void AnimatedModel::updateAnimation(float elapsedTime)
             const glm::vec4 a = channel.values[std::min(lower, channel.values.size() - 1)];
             const glm::vec4 b = channel.values[std::min(upper, channel.values.size() - 1)];
             Impl::NodePose& node = impl_->nodes[static_cast<std::size_t>(channel.node)];
+            node.hasMatrix = false;
 
             if (channel.path == Impl::ChannelPath::Rotation)
             {

@@ -4,7 +4,7 @@
 #include <glm.hpp>
 
 #include <string>
-
+#include <map>
 class Texture
 {
 public:
@@ -33,6 +33,8 @@ public:
     float minY() const { return minBounds_.y; }
     float maxY() const { return maxBounds_.y; }
 
+    const Texture* diffuseTexture() const { return hasDiffuseTexture_ ? &diffuseTexture_ : nullptr; }
+
 private:
     GLuint vao_ = 0;
     GLuint vbo_ = 0;
@@ -40,5 +42,8 @@ private:
     GLsizei indexCount_ = 0;
     glm::vec3 minBounds_ = glm::vec3(0.0f);
     glm::vec3 maxBounds_ = glm::vec3(0.0f);
+
+    Texture diffuseTexture_;
+    bool hasDiffuseTexture_ = false;
 
 };
