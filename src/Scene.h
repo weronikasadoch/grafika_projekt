@@ -15,6 +15,7 @@ public:
     static constexpr int kMinJellyfishCount = 0;
     static constexpr int kMaxJellyfishCount = 10;
     static constexpr int kCollectibleJellyfishCount = 5;
+    static constexpr int kGarySoundsCount = 4;
 
     Scene(int width, int height);
     ~Scene();
@@ -126,4 +127,5 @@ private:
     struct ma_sound* backgroundMusic_ = nullptr;
     struct ma_sound* taskStartSound_ = nullptr;
     struct ma_sound* taskEndSound_ = nullptr;
+    ma_sound* garySounds_[kGarySoundsCount] = { nullptr };
 };

@@ -36,7 +36,7 @@ namespace
     constexpr float kHighFaceCoralLowerOffset = 0.28f;
     constexpr float kSquidwardNpcX = 5.2f;
     constexpr float kSquidwardNpcZ = -2.6f;
-    constexpr float kSquidwardNpcScale = 0.75f;
+    constexpr float kSquidwardNpcScale = 0.66f;
     const glm::vec3 kLightDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 
     struct DecorationPlacement
@@ -418,7 +418,7 @@ void Renderer::render(Scene& scene)
     glm::mat4 characterModel = glm::mat4(1.0f);
     characterModel = glm::translate(characterModel, charPos);
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    characterModel = glm::scale(characterModel, glm::vec3(0.45f));
+    characterModel = glm::scale(characterModel, glm::vec3(0.6f));
     const bool characterMoving = scene.isCharacterMoving();
     animatedCharacterModel_.setActiveAnimation(characterMoving
         ? "spongebob_idle01.anm.001"
@@ -449,7 +449,7 @@ void Renderer::render(Scene& scene)
 
     const glm::mat4 garyModel = glm::scale(
         glm::translate(glm::mat4(1.0f), glm::vec3(2.5f, -1.0f, -1.0f)),
-        glm::vec3(0.001f)
+        glm::vec3(0.00001f)
     );
 
     renderShadowMap(lightSpace, spongebobTransform_, patrickTransform_, squidwardTransform_, characterModel, scene, jellyfishCount);
@@ -499,7 +499,7 @@ void Renderer::render(Scene& scene)
     patrickNpcTransform_ = glm::mat4(1.0f);
     patrickNpcTransform_ = glm::translate(patrickNpcTransform_, glm::vec3(-5.0f, -.90f, -3.0f)); // Współrzędne X, Y, Z gdzie ma stać
     patrickNpcTransform_ = glm::rotate(patrickNpcTransform_, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f)); 
-    patrickNpcTransform_ = glm::scale(patrickNpcTransform_, glm::vec3(0.3f, 0.3f, 0.3f));
+    patrickNpcTransform_ = glm::scale(patrickNpcTransform_, glm::vec3(0.3f));
     GLuint houseShader = scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_;
     glUseProgram(houseShader);
 
@@ -512,7 +512,7 @@ void Renderer::render(Scene& scene)
     setMat4(scene.isToonShadingEnabled() ? toonUniforms_.view : pbrUniforms_.view, view);
     setMat4(scene.isToonShadingEnabled() ? toonUniforms_.projection : pbrUniforms_.projection, projection);
     setMat4(scene.isToonShadingEnabled() ? toonUniforms_.lightSpaceMatrix : pbrUniforms_.lightSpaceMatrix, lightSpace);
-
+    /*
     // Domek SpongeBoba
     setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, spongebobTransform_);
     spongebobModel_.Draw(houseShader);
@@ -524,6 +524,32 @@ void Renderer::render(Scene& scene)
     // Domek Skalmara
     setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, squidwardTransform_);
     squidwardModel_.Draw(houseShader);
+    GLuint houseShader = scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_;
+    glUseProgram(houseShader);
+    */
+    // Aktywujemy diffuse texture ze sparsowanych plików .mtl, odcinamy czysty jednolity kolor
+    setInt(glGetUniformLocation(houseShader, "uUseDiffuseTexture"), 0);
+    setInt(glGetUniformLocation(houseShader, "uUseMaterialColor"), 1);
+    setVec3(glGetUniformLocation(houseShader, "uBaseColor"), glm::vec3(1.0f));
+    setFloat(glGetUniformLocation(houseShader, "uMaterialBrightness"), 1.0f);
+    setInt(glGetUniformLocation(houseShader, "uDiffuseTexture"), 0);
+
+    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.view : pbrUniforms_.view, view);
+    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.projection : pbrUniforms_.projection, projection);
+    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.lightSpaceMatrix : pbrUniforms_.lightSpaceMatrix, lightSpace);
+
+    // Domek SpongeBoba (Teraz rysowany przez potok Assimp z obsługą .mtl)
+    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, spongebobTransform_);
+    spongebobModel_.Draw(houseShader);
+
+    // Domek Patryka (Teraz rysowany przez potok Assimp z obsługą .mtl)
+    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, patrickTransform_);
+    patrickModel_.Draw(houseShader);
+
+    // Domek Skalmara (Teraz rysowany przez potok Assimp z obsługą .mtl)
+    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, squidwardTransform_);
+    squidwardModel_.Draw(houseShader);
+
 
     glUseProgram(0);
 
@@ -1373,16 +1399,16 @@ glm::vec3 Renderer::getHouseColor(int modelIndex) const
 void Renderer::initializeStaticTransforms(Scene& scene)
 {
     spongebobTransform_ = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.90f, -3.0f)),
-        glm::vec3(0.45f)
+        glm::translate(glm::mat4(1.0f), glm::vec3(3.2f, -1.f, -3.0f)),
+        glm::vec3(0.75f)
     );
     patrickTransform_ = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -0.90f, -2.6f)),
-        glm::vec3(0.45f)
+        glm::translate(glm::mat4(1.0f), glm::vec3(-3.2f, -0.90f, -3.0f)),
+        glm::vec3(0.7f)
     );
     squidwardTransform_ = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.20f, -2.6f)),
-        glm::vec3(0.45f)
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.90f, -3.0f)),
+        glm::vec3(0.75f)
     );
     squidwardNpcTransform_ = glm::scale(
         glm::rotate(

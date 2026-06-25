@@ -22,6 +22,8 @@ namespace
     constexpr float kSquidwardQuestRadius = 1.35f;
     constexpr float kCollectibleJellyfishPickupRadius = 1.05f;
     constexpr float kPatrickInteractionRadius = 2.0f; 
+    constexpr float kGaryInteractionRadius = 1.2f; // odległość interakcji ze ślimakiem
+    const glm::vec2 kGaryPosition(2.5f, -1.0f);
     const glm::vec2 kPatrickPosition(-5.0f, -3.0f);
     const glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
     const glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
@@ -70,6 +72,17 @@ Scene::Scene(int width, int height)
         {
             delete taskEndSound_;
             taskEndSound_ = nullptr;
+        }
+        for (int i = 0; i < kGarySoundsCount; ++i)
+        {
+            garySounds_[i] = new ma_sound();
+            std::string soundPath = "assets/voice_lines/garry_sounds_" + std::to_string(i + 1) + ".mp3";
+
+            if (ma_sound_init_from_file(audioEngine_, soundPath.c_str(), 0, NULL, NULL, garySounds_[i]) != MA_SUCCESS)
+            {
+                delete garySounds_[i];
+                garySounds_[i] = nullptr;
+            }
         }
     }
 }
@@ -164,6 +177,16 @@ void Scene::processInput(GLFWwindow* window)
         if (glm::distance(playerPosition, kPatrickPosition) <= kPatrickInteractionRadius)
         {
             patrickDancing_ = !patrickDancing_; 
+        }
+        else if (glm::distance(playerPosition, kGaryPosition) <= kGaryInteractionRadius)
+        {
+            int randomIndex = rand() % kGarySoundsCount; 
+
+            if (garySounds_[randomIndex] != nullptr)
+            {
+                ma_sound_seek_to_pcm_frame(garySounds_[randomIndex], 0);
+                ma_sound_start(garySounds_[randomIndex]);
+            }
         }
         else if (!jellyfishQuestStarted_)
         {
@@ -710,6 +733,15 @@ Scene::~Scene()
         delete taskEndSound_;
         taskEndSound_ = nullptr;
     }
+    for (int i = 0; i < kGarySoundsCount; ++i)
+    {
+        if (garySounds_[i])
+        {
+            ma_sound_uninit(garySounds_[i]);
+            delete garySounds_[i];
+            garySounds_[i] = nullptr;
+        }
+    }
     if (backgroundMusic_)
     {
         ma_sound_uninit(backgroundMusic_);
@@ -722,4 +754,5 @@ Scene::~Scene()
         delete audioEngine_;
         audioEngine_ = nullptr;
     }
+    
 }
