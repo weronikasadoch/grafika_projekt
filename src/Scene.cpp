@@ -21,6 +21,8 @@ namespace
     constexpr float kFallbackSandHeight = -1.0f;
     constexpr float kSquidwardQuestRadius = 1.35f;
     constexpr float kCollectibleJellyfishPickupRadius = 1.05f;
+    constexpr float kPatrickInteractionRadius = 2.0f; 
+    const glm::vec2 kPatrickPosition(-5.0f, -3.0f);
     const glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
     const glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
         glm::vec3(24.6f, 0.12f,  5.4f),
@@ -45,12 +47,14 @@ Scene::Scene(int width, int height)
     loadSandCollisionMesh("assets/models/scene/sand.obj");
     collectibleJellyfishActive_.fill(false);
     audioEngine_ = new ma_engine();
+    patrickDancing_ = false;
 
     if (ma_engine_init(NULL, audioEngine_) == MA_SUCCESS)
     {
         backgroundMusic_ = new ma_sound();
         if (ma_sound_init_from_file(audioEngine_, "assets/music.mp3", 0x00000003, NULL, NULL, backgroundMusic_) == MA_SUCCESS)
         {
+            ma_sound_set_looping(backgroundMusic_, MA_TRUE);
             ma_sound_start(backgroundMusic_);
         }
 
@@ -157,7 +161,11 @@ void Scene::processInput(GLFWwindow* window)
     if (isSpacePressed && !wasSpacePressed_)
     {
         const glm::vec2 playerPosition(characterPosition_.x, characterPosition_.z);
-        if (!jellyfishQuestStarted_)
+        if (glm::distance(playerPosition, kPatrickPosition) <= kPatrickInteractionRadius)
+        {
+            patrickDancing_ = !patrickDancing_; 
+        }
+        else if (!jellyfishQuestStarted_)
         {
             if (glm::distance(playerPosition, kSquidwardQuestPosition) <= kSquidwardQuestRadius)
             {

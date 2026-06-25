@@ -166,8 +166,6 @@ private:
     AnimatedModel animatedCharacterModel_;
     AnimatedModel patrickNpcModel_;
     Model jellyfishModel_;
-    //Model garyModel_;
-    //AnimatedModel garyModel_;
     AssimpModel garyModel_;
     Texture garyTexture_;
     Model bubbleModel_;

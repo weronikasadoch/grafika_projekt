@@ -327,8 +327,6 @@ bool Renderer::initialize()
     const bool patrickNpcLoaded = patrickNpcModel_.loadFromGlb("assets/models/Patrick/patrick_star.glb");
     const bool characterLoaded = animatedCharacterModel_.loadFromGlb("assets/models/Spongebob_model/spongebob.glb");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
-    //const bool garrLoaded = garyModel_.loadFromObj("assets/models/gary_pet/gary_pet.obj");
-    //const bool garrLoaded = garyModel_.loadFromGlb("assets/models/gary_pet/gary_pet.glb");
     if (!garyModel_.loadModel("assets/models/gary_pet/gary_pet.obj")) {
         std::cerr << "Nie udalo sie zaladowac modelu Gacusia przez Assimp!\n";
         return false;
@@ -344,7 +342,6 @@ bool Renderer::initialize()
     const bool coral9Loaded = coral9Model_.loadFromObj("assets/models/coral_rock/coral_9.obj");
     const bool coral10Loaded = coral10Model_.loadFromObj("assets/models/coral_rock/coral_10.obj");
     const bool bubbleLoaded = bubbleModel_.loadFromObj("assets/models/sphere.obj");
-    //const bool patrickNPCLoaded = patrickNPC_.loadFromGlb("assets/models/Patrick/patrick_star.glb");
     bool animatedSpongebobTextureLoaded = false;
     if (animatedCharacterModel_.hasEmbeddedBaseColorTexture())
     {
@@ -369,12 +366,6 @@ bool Renderer::initialize()
         patrickNpcTexture_.createSolidColor(255, 100, 100);  
         patrickNpcTextureLoaded = true;
     }
-    //bool garyTextureLoaded = false;
-    //if (garyModel_.hasEmbeddedBaseColorTexture())
-    //{
-      //  const std::vector<unsigned char>& imageData = garyModel_.embeddedBaseColorTexture();
-        //garyTextureLoaded = garyTexture_.loadImageData(imageData.data(), static_cast<int>(imageData.size()));
-    //}
     const bool skyboxResourcesCreated = createSkyboxResources();
     const bool shadowResourcesCreated = createShadowResources();
     glGenBuffers(1, &coralInstanceVbo_);
@@ -387,7 +378,6 @@ bool Renderer::initialize()
         squidwardNpcLoaded &&
         characterLoaded &&
         jellyfishLoaded &&
-        //garrLoaded &&
         coral1Loaded &&
         coral2Loaded &&
         coral3Loaded &&
@@ -435,6 +425,18 @@ void Renderer::render(Scene& scene)
         : "spongebob_idle01.anm");
     const float animationSpeed = characterMoving ? 1.7f : 1.0f;
     animatedCharacterModel_.updateAnimation(scene.getElapsedTime() * animationSpeed);
+
+    patrickNpcModel_.setActiveAnimation("mixamo.com");
+
+    if (scene.isPatrickDancing())
+    {
+        patrickNpcModel_.updateAnimation(scene.getElapsedTime());
+    }
+    else
+    {
+        patrickNpcModel_.updateAnimation(0.0f);
+    }
+
     if (jellyfishCount > kLightJellyfishIndex)
     {
         pointLightPosition_ = glm::vec3(createJellyfishTransform(kLightJellyfishIndex, scene.getJellyfishAnimationTime(kLightJellyfishIndex)) * glm::vec4(0.0f, 0.45f, 0.0f, 1.0f));
@@ -468,13 +470,7 @@ void Renderer::render(Scene& scene)
     renderModel(squidwardNpcModel_, squidwardNpcTransform_, view, projection, lightSpace, glm::vec3(0.54f, 0.76f, 0.78f), smallModelOutlineThickness, 1.8f, scene.isToonShadingEnabled(), squidwardNpcModel_.diffuseTexture(), false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.65f);
     renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
     renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false, &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
-    //garyTexture_.bind(GL_TEXTURE0);
-
-    //glUseProgram(scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_);
-    //glUniform1i(glGetUniformLocation(scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_, "uUseDiffuseTexture"), 1);
-    //glUniform1i(glGetUniformLocation(scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_, "uDiffuseTexture"), 0);
-    //renderAnimatedModel(garyModel_,garyModel, view, projection, lightSpace, glm::vec3(1.0), outlineThickness, 1.0f, scene.isToonShadingEnabled(), &garyTexture_, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 1.0f);
-
+    
     GLuint activeShader = scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_;
     glUseProgram(activeShader);
 
@@ -531,39 +527,10 @@ void Renderer::render(Scene& scene)
 
     glUseProgram(0);
 
-   
-    //glUseProgram(houseShader);
-
-    // ZMIANA: Wyłączamy sampler tradycyjnej zewnętrznej tekstury PNG (0),
-    // a w zamian włączamy czytanie kolorów wbudowanych w geometrię / plik MTL (1)
-    //setInt(glGetUniformLocation(houseShader, "uUseDiffuseTexture"), 1);
-    //setInt(glGetUniformLocation(houseShader, "uUseMaterialColor"), 0);  // <-- KLUCZOWA ZMIANA
-
-    // Ustawiamy neutralne kolory bazowe i jasność, aby nie zniekształcać barw Patryka
-    //setVec3(glGetUniformLocation(houseShader, "uBaseColor"), glm::vec3(1.0f));
-    //setFloat(glGetUniformLocation(houseShader, "uMaterialBrightness"), 1.0f);
-
-    // Przesyłamy przygotowaną macierz transformacji lokacji Patryka NPC
-    //setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, patrickNpcTransform_);
-
-    // Rysujemy model Patryka (Assimp nałoży teraz wbudowane barwy i cieniowanie)
-    //patrickNpcModel_.Draw(houseShader);
-
-    // Czyszczenie potoku po rysowaniu
-    //glUseProgram(0);
-    //glBindTexture(GL_TEXTURE_2D, 0);
-
     glUseProgram(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // Patrick NPC
-   // renderAnimatedModel(patrickNpcModel_, patrickNpcTransform_, view, projection, lightSpace,
-     //   glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false,
-       // nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
-    renderAnimatedModel(patrickNpcModel_, patrickNpcTransform_, view, projection, lightSpace,
-        glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false,
-        &patrickNpcTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);  // &patrickNpcTexture_ = tekstura!
-
+    renderAnimatedModel(patrickNpcModel_, patrickNpcTransform_, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false, &patrickNpcTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f); 
     for (int i = 0; i < jellyfishCount; ++i)
     {
         const bool isLightSource = i == kLightJellyfishIndex;
@@ -594,8 +561,8 @@ void Renderer::render(Scene& scene)
             0.0f,
             0.22f,
             false,
-            & scene,  // <-- PRZEKAZUJEMY WSKAŹNIK NA SCENĘ (włącza dodawanie kolizji)
-            0.0f,   // <-- collisionPadding
+            & scene, 
+            0.0f,   
             0.75f
         );
     }
@@ -1128,6 +1095,7 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     //renderModelShadowCaster(squidwardModel_, lightSpace, squidwardTransform);
     renderModelShadowCaster(squidwardNpcModel_, lightSpace, squidwardNpcTransform_);
     renderAnimatedModelShadowCaster(animatedCharacterModel_, lightSpace, characterTransform);
+    renderAnimatedModelShadowCaster(patrickNpcModel_, lightSpace, patrickNpcTransform_); 
     renderVillageHouseShadowCasters(lightSpace);
     renderCoralShadowCastersInstanced(lightSpace);
     for (int i = 0; i < jellyfishCount; ++i)
