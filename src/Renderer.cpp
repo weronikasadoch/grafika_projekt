@@ -527,7 +527,6 @@ void Renderer::render(Scene& scene)
     GLuint houseShader = scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_;
     glUseProgram(houseShader);
     */
-    // Aktywujemy diffuse texture ze sparsowanych plików .mtl, odcinamy czysty jednolity kolor
     setInt(glGetUniformLocation(houseShader, "uUseDiffuseTexture"), 0);
     setInt(glGetUniformLocation(houseShader, "uUseMaterialColor"), 1);
     setVec3(glGetUniformLocation(houseShader, "uBaseColor"), glm::vec3(1.0f));
@@ -734,46 +733,70 @@ bool Renderer::createUnderwaterCubemap()
                 color += glm::vec3(0.05f, 0.18f, 0.16f) * caustics;
 
                 if (!flowerMasks.empty())
-                {
-                    static constexpr float panelCenters[] = {0.22f, 0.34f, 0.46f, 0.58f, 0.70f, 0.82f};
-                    static const glm::vec3 panelColors[] = {
-                        glm::vec3(0.98f, 0.78f, 0.28f),
-                        glm::vec3(0.95f, 0.25f, 0.52f),
-                        glm::vec3(0.20f, 0.95f, 0.78f),
-                        glm::vec3(0.92f, 0.55f, 1.00f),
-                        glm::vec3(0.98f, 0.40f, 0.18f),
-                        glm::vec3(0.72f, 0.98f, 0.30f)
+                { 
+                    static const glm::vec3 kPatternColors[] = {
+                        glm::vec3(0.98f, 0.78f, 0.28f), // Żółty
+                        glm::vec3(0.95f, 0.25f, 0.52f), // Różowy/Fioletowy
+                        glm::vec3(0.20f, 0.95f, 0.78f), // Turkusowy
+                        glm::vec3(0.92f, 0.55f, 1.00f), // Jasnofioletowy
+                        glm::vec3(0.98f, 0.40f, 0.18f), // Pomarańczowy
+                        glm::vec3(0.72f, 0.98f, 0.30f)  // Zielony
                     };
+                    constexpr std::size_t kColorCount = std::size(kPatternColors);
 
-                    constexpr float panelWidth = 0.095f;
-                    constexpr float panelMinY = -0.08f;
-                    constexpr float panelMaxY = 0.12f;
                     const float longitude = (std::atan2(direction.x, -direction.z) / (2.0f * kPi)) + 0.5f;
+                    constexpr int kTotalFlowers = 20;
 
-                    for (std::size_t panel = 0; panel < std::size(panelCenters); ++panel)
+                    for (int f = 0; f < kTotalFlowers; ++f)
                     {
-                        const std::vector<float>& flowerMask = flowerMasks[panel % flowerMasks.size()];
-                        if (flowerMask.empty())
-                        {
-                            continue;
-                        }
+                        float centerLong = std::sin(static_cast<float>(f) * 14.23f) * 0.5f + 0.5f;
 
-                        const float halfWidth = panelWidth * 0.5f;
-                        const float horizontalDistance = std::abs(longitude - panelCenters[panel]);
-                        if (horizontalDistance > halfWidth || direction.y < panelMinY || direction.y > panelMaxY)
-                        {
-                            continue;
-                        }
+                        float centerPriceY = std::cos(static_cast<float>(f) * 27.54f) * 0.35f + 0.05f;
+                        float randomFactor = std::abs(std::sin(static_cast<float>(f) * 75.67f));
+                        float pWidth = 0.04f + randomFactor * 0.18f;
 
-                        const float flowerU = (longitude - (panelCenters[panel] - halfWidth)) / panelWidth;
-                        const float flowerV = 1.0f - ((direction.y - panelMinY) / (panelMaxY - panelMinY));
+                        float halfWidth = pWidth * 0.5f;
+                        const float horizontalDistance = std::abs(longitude - centerLong);
+
+                        if (horizontalDistance > halfWidth || direction.y < (centerPriceY - pWidth) || direction.y >(centerPriceY + pWidth))
+                        {
+                            continue;                         }
+
+                        const float flowerU = (longitude - (centerLong - halfWidth)) / pWidth;
+                        const float flowerV = 1.0f - ((direction.y - (centerPriceY - pWidth)) / (pWidth * 2.0f));
+
                         const int flowerX = glm::clamp(static_cast<int>(flowerU * static_cast<float>(size)), 0, size - 1);
                         const int flowerY = glm::clamp(static_cast<int>(flowerV * static_cast<float>(size)), 0, size - 1);
-                        const float maskValue = flowerMask[static_cast<std::size_t>(flowerY * size + flowerX)];
+                        
+                        const std::vector<float>& flowerMask = flowerMasks[static_cast<std::size_t>(f) % flowerMasks.size()];
+                        if (flowerMask.empty()) continue;
 
-                        if (maskValue > 0.0f)
+                        float maxMaskValue = 0.0f;
+                        constexpr int kThicknessRadius = 3; 
+
+                        for (int ky = -kThicknessRadius; ky <= kThicknessRadius; ++ky)
                         {
-                            color = glm::mix(color, panelColors[panel], maskValue);
+                            for (int kx = -kThicknessRadius; kx <= kThicknessRadius; ++kx)
+                            {
+                                if (kx * kx + ky * ky > kThicknessRadius * kThicknessRadius) continue;
+
+                                int sampleX = glm::clamp(flowerX + kx, 0, size - 1);
+                                int sampleY = glm::clamp(flowerY + ky, 0, size - 1);
+
+                                float sampleValue = flowerMask[static_cast<std::size_t>(sampleY * size + sampleX)];
+                                if (sampleValue > maxMaskValue)
+                                {
+                                    maxMaskValue = sampleValue;
+                                }
+                            }
+                        }
+
+                        if (maxMaskValue > 0.0f)
+                        {
+                            float finalToonMask = maxMaskValue > 0.2f ? 1.0f : maxMaskValue;
+
+                            glm::vec3 fColor = kPatternColors[static_cast<std::size_t>(f) % kColorCount];
+                            color = glm::mix(color, fColor, finalToonMask);
                         }
                     }
                 }
