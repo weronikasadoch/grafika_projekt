@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Camera.h"
+#include "CurvePathGenerator.h"
 #include <glm.hpp>
 #include <array>
 #include <vector>
@@ -52,10 +53,13 @@ public:
     struct Bubble
     {
         glm::vec3 position;
-        float speed;
         float size;
-        float wobbleSpeed;
-        float wobbleTime;
+        float pathProgress; 
+        float speed; 
+        std::vector<CurvePathGenerator::PathPoint> path; 
+        glm::vec3 tangent;
+        glm::vec3 normal;
+        glm::vec3 binormal;
     };
     const std::vector<Bubble>& getBubbles() const { return bubbles_; }
     void togglePatrickDance() { patrickDancing_ = !patrickDancing_; }

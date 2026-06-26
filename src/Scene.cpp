@@ -22,7 +22,7 @@ namespace
     constexpr float kSquidwardQuestRadius = 1.35f;
     constexpr float kCollectibleJellyfishPickupRadius = 1.05f;
     constexpr float kPatrickInteractionRadius = 2.0f; 
-    constexpr float kGaryInteractionRadius = 1.2f; // odległość interakcji ze ślimakiem
+    constexpr float kGaryInteractionRadius = 1.2f; 
     const glm::vec2 kGaryPosition(2.5f, -1.0f);
     const glm::vec2 kPatrickPosition(-5.0f, -3.0f);
     const glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
@@ -270,33 +270,101 @@ void Scene::updateDeltaTime(float currentFrameTime)
         {
             Bubble newBubble;
 
-
+            // Random start position on the sand
             float randomX = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
             float randomZ = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
             float startY = getSandHeight(randomX, randomZ);
 
-            newBubble.position = glm::vec3(randomX, startY, randomZ);
-            newBubble.speed = 1.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 1.5f);
+            glm::vec3 startPos(randomX, startY, randomZ);
+
+            // Random end position high above
+            float endY = startY + 8.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 3.0f);
+
+            // Random bubble size
             float randomFraction = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-            newBubble.size = 0.05f + randomFraction * (0.15f - 0.02f);
-            newBubble.wobbleSpeed = 2.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 4.0f);
-            newBubble.wobbleTime = static_cast<float>(rand());
+            newBubble.size = 0.05f + randomFraction * (0.15f - 0.05f);
+
+            // Random speed (how fast it moves along the curve)
+            newBubble.speed = 0.08f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 0.12f);
+            newBubble.pathProgress = 0.0f;
+
+            // Choose random path type: 50% spiral, 50% Bezier curve
+            bool useSpiral = (rand() % 2) == 0;
+
+            if (useSpiral)
+            {
+                // Generate spiral path with PTF
+                float radius = 0.3f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 0.5f);
+                float turns = 1.5f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 2.0f);
+                newBubble.path = CurvePathGenerator::generateSpiralPathWithPTF(
+                    startPos,
+                    endY - startY,
+                    radius,
+                    turns,
+                    60
+                );
+            }
+            else
+            {
+                // Generate Bezier curve with PTF
+                glm::vec3 endPos(
+                    randomX + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 4.0f,
+                    endY,
+                    randomZ + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 4.0f
+                );
+
+                // Control points for smooth curve
+                float height = endY - startY;
+                glm::vec3 p1 = startPos + glm::vec3(
+                    (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 2.0f,
+                    height * 0.33f,
+                    (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 2.0f
+                );
+                glm::vec3 p2 = startPos + glm::vec3(
+                    (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 2.0f,
+                    height * 0.67f,
+                    (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 2.0f
+                );
+
+                newBubble.path = CurvePathGenerator::generateBezierPathWithPTF(
+                    startPos,
+                    p1,
+                    p2,
+                    endPos,
+                    60
+                );
+            }
+
+            // Initialize position and frame
+            if (!newBubble.path.empty())
+            {
+                newBubble.position = newBubble.path[0].position;
+                newBubble.tangent = newBubble.path[0].tangent;
+                newBubble.normal = newBubble.path[0].normal;
+                newBubble.binormal = newBubble.path[0].binormal;
+            }
 
             bubbles_.push_back(newBubble);
         }
     }
     for (auto it = bubbles_.begin(); it != bubbles_.end(); )
     {
-        it->wobbleTime += deltaTime_ * it->wobbleSpeed;
-        it->position.y += it->speed * deltaTime_;
-        it->position.x += std::sin(it->wobbleTime) * 0.3f * deltaTime_;
-        it->position.z += std::cos(it->wobbleTime) * 0.3f * deltaTime_;
-        if (it->position.y > 8.0f)
+        // Update progress along the curve
+        it->pathProgress += it->speed * deltaTime_;
+
+        if (it->pathProgress >= 1.0f)
         {
+            // Bubble reached the end of its path
             it = bubbles_.erase(it);
         }
         else
         {
+            // Interpolate position and frame along the path using PTF
+            auto pathPoint = CurvePathGenerator::interpolatePath(it->path, it->pathProgress);
+            it->position = pathPoint.position;
+            it->tangent = pathPoint.tangent;
+            it->normal = pathPoint.normal;
+            it->binormal = pathPoint.binormal;
             ++it;
         }
     }

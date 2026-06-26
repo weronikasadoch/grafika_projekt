@@ -151,13 +151,10 @@ private:
     GLuint shadowFbo_ = 0;
     GLuint shadowDepthTexture_ = 0;
     std::array<glm::mat4, 22> coralTransforms_ = {};
-    std::array<glm::mat4, 24> villageHouseTransforms_ = {};  // 8 villages x 3 houses each
-    std::array<glm::mat4, 64> villageCoralTransforms_ = {};  // 8 villages x 8 corals each
-    // Extra big coral transforms placed randomly across the map (deterministic seed)
+    std::array<glm::mat4, 24> villageHouseTransforms_ = {};  
+    std::array<glm::mat4, 64> villageCoralTransforms_ = {};  
     std::vector<glm::mat4> extraBigCoralTransforms_;
-    // Scale factors for each extra big coral (for varied sizes and collision)
     std::vector<float> extraBigCoralScales_;
-    // Model indices for each extra big coral
     std::vector<int> extraBigCoralModelIndices_;
     glm::mat4 spongebobTransform_ = glm::mat4(1.0f);
     glm::mat4 patrickTransform_ = glm::mat4(1.0f);
@@ -186,12 +183,10 @@ private:
     Model coral8Model_;
     Model coral9Model_;
     Model coral10Model_;
-    // big_coral models (use Assimp loader for proper materials)
     AssimpModel coral11Model_;
     AssimpModel coral12Model_;
     AssimpModel coral13Model_;
 
-    // Helper to draw any coral model (Model or AssimpModel) using instancing
     void drawCoralInstancedByIndex(int modelIndex, GLuint instanceBuffer, GLsizei instanceCount) const;
     Texture spongebobFallbackTexture_;
     Texture animatedSpongebobTexture_;

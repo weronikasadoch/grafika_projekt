@@ -120,7 +120,7 @@ void main()
     vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
     vec3 globalLightDir = normalize(-uLightDirection);
     float shadow = calculateShadow(normal, globalLightDir);
-    float globalVisibility = mix(1.0, 0.42, shadow);
+    float globalVisibility = mix(1.0, 0.70, shadow);
 
     if (uUseFastPbr == 1)
     {

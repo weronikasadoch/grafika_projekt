@@ -76,7 +76,7 @@ void main()
     }
 
     vec3 litColor = surfaceColor * shade;
-    litColor *= mix(1.0, 0.45, calculateShadow(normal, lightDir));
+    litColor *= mix(1.0, 0.70, calculateShadow(normal, lightDir));
 
     vec3 pointVector = uPointLightPosition - vWorldPosition;
     float pointDistance = length(pointVector);
