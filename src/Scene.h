@@ -119,9 +119,9 @@ private:
     std::array<float, kMaxJellyfishCount> jellyfishAnimationTimes_ = {};
     std::array<bool, kCollectibleJellyfishCount> collectibleJellyfishActive_ = {};
     bool patrickDancing_ = false;
-    
 
-    glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, -1.0f); 
+
+    glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, -5.0f);  // Bardziej w tył (było -1.0f)
     float characterYaw_ = -90.0f;
     bool characterMoving_ = false;
     float cameraDistance_ = 2.5f;

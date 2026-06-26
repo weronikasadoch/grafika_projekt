@@ -1,0 +1,11 @@
+# Material file for 3dp_gary.obj
+
+newmtl sPTgary
+	Ns 32
+	d 1
+	illum 2
+	Kd 0.8 0.8 0.8
+	Ks 0.043137 0.043137 0.043137
+	Ka 0.490196 0.490196 0.490196
+	map_Kd tPTgary.png
+

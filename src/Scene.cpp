@@ -25,7 +25,7 @@ namespace
     constexpr float kGaryInteractionRadius = 1.2f; 
     const glm::vec2 kGaryPosition(2.5f, -1.0f);
     const glm::vec2 kPatrickPosition(-5.0f, -3.0f);
-    const glm::vec2 kSquidwardQuestPosition(5.2f, -2.6f);
+    const glm::vec2 kSquidwardQuestPosition(2.5f, -5.0f);  // Po prawej od SpongeBoba
     const glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
         glm::vec3(24.6f, 0.12f,  5.4f),
         glm::vec3(25.2f, 0.18f,  6.7f),
@@ -306,14 +306,11 @@ void Scene::updateDeltaTime(float currentFrameTime)
             }
             else
             {
-                // Generate Bezier curve with PTF
                 glm::vec3 endPos(
                     randomX + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 4.0f,
                     endY,
                     randomZ + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 4.0f
                 );
-
-                // Control points for smooth curve
                 float height = endY - startY;
                 glm::vec3 p1 = startPos + glm::vec3(
                     (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 2.0f,
@@ -334,8 +331,6 @@ void Scene::updateDeltaTime(float currentFrameTime)
                     60
                 );
             }
-
-            // Initialize position and frame
             if (!newBubble.path.empty())
             {
                 newBubble.position = newBubble.path[0].position;
@@ -349,17 +344,14 @@ void Scene::updateDeltaTime(float currentFrameTime)
     }
     for (auto it = bubbles_.begin(); it != bubbles_.end(); )
     {
-        // Update progress along the curve
         it->pathProgress += it->speed * deltaTime_;
 
         if (it->pathProgress >= 1.0f)
         {
-            // Bubble reached the end of its path
             it = bubbles_.erase(it);
         }
         else
         {
-            // Interpolate position and frame along the path using PTF
             auto pathPoint = CurvePathGenerator::interpolatePath(it->path, it->pathProgress);
             it->position = pathPoint.position;
             it->tangent = pathPoint.tangent;

@@ -150,7 +150,7 @@ private:
     GLuint coralInstanceVbo_ = 0;
     GLuint shadowFbo_ = 0;
     GLuint shadowDepthTexture_ = 0;
-    std::array<glm::mat4, 22> coralTransforms_ = {};
+    std::array<glm::mat4, 27> coralTransforms_ = {};
     std::array<glm::mat4, 24> villageHouseTransforms_ = {};  
     std::array<glm::mat4, 64> villageCoralTransforms_ = {};  
     std::vector<glm::mat4> extraBigCoralTransforms_;
@@ -166,7 +166,7 @@ private:
     AssimpModel spongebobModel_;
     AssimpModel patrickModel_;
     AssimpModel squidwardModel_;
-    AnimatedModel squidwardNpcModel_;
+    AssimpModel squidwardNpcModel_;  // Powrót do AssimpModel (u¿ywa OBJ)
     AnimatedModel animatedCharacterModel_;
     AnimatedModel patrickNpcModel_;
     Model jellyfishModel_;
