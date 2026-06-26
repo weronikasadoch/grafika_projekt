@@ -4,16 +4,29 @@
 #include <assimp/postprocess.h>
 #include <stb_image.h>
 #include <iostream>
+#include <limits>
 
 bool AssimpModel::loadModel(const std::string& path) {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
-
+    const aiScene* scene = importer.ReadFile(path,
+        aiProcess_Triangulate |
+        aiProcess_FlipUVs |
+        aiProcess_GenSmoothNormals | // Generuj gładkie wektory normalne, jeśli ich brakuje
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_ImproveCacheLocality |
+        aiProcess_FindInvalidData |
+        aiProcess_GenUVCoords |       // <-- WYMUSZA GENEROWANIE KOORDYNATÓW UV
+        aiProcess_TransformUVCoords
+    );
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::cerr << "BŁĄD ASSIMP: " << importer.GetErrorString() << std::endl;
         return false;
     }
     directory = path.substr(0, path.find_last_of('/'));
+
+    // Reset bounds
+    minBounds_ = glm::vec3(std::numeric_limits<float>::max());
+    maxBounds_ = glm::vec3(std::numeric_limits<float>::lowest());
 
     processNode(scene->mRootNode, scene);
     return true;
@@ -22,6 +35,11 @@ bool AssimpModel::loadModel(const std::string& path) {
 void AssimpModel::Draw(unsigned int shaderProgram) const {
     for (unsigned int i = 0; i < meshes.size(); i++)
         meshes[i].Draw(shaderProgram);
+}
+
+void AssimpModel::DrawInstanced(GLuint instanceBuffer, GLsizei instanceCount) const {
+    for (unsigned int i = 0; i < meshes.size(); ++i)
+        meshes[i].DrawInstanced(instanceBuffer, instanceCount);
 }
 
 void AssimpModel::processNode(aiNode* node, const aiScene* scene) {
@@ -59,8 +77,22 @@ Mesh AssimpModel::processMesh(aiMesh* mesh, const aiScene* scene) {
             indices.push_back(face.mIndices[j]);
     }
 
+    // Update model bounds based on this mesh's vertices
+    if (!vertices.empty()) {
+        glm::vec3 meshMin(std::numeric_limits<float>::max());
+        glm::vec3 meshMax(std::numeric_limits<float>::lowest());
+        for (const Vertex& v : vertices) {
+            meshMin = glm::min(meshMin, v.Position);
+            meshMax = glm::max(meshMax, v.Position);
+        }
+        minBounds_ = glm::min(minBounds_, meshMin);
+        maxBounds_ = glm::max(maxBounds_, meshMax);
+    }
+
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+        // 1. Sprawdzamy, czy materiał ma teksturę obrazkową (np. PNG/JPG)
         if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
             aiString str;
             material->GetTexture(aiTextureType_DIFFUSE, 0, &str);
@@ -69,34 +101,95 @@ Mesh AssimpModel::processMesh(aiMesh* mesh, const aiScene* scene) {
             texture.type = "texture_diffuse";
             texture.path = str.C_Str();
         }
+        // 2. Jeśli NIE MA tekstury, wyciągamy czysty kolor Kd z pliku .mtl!
+        else {
+            aiColor4D diffuseColor(0.8f, 0.8f, 0.8f, 1.0f); // Domyślny szary w razie błędu
+            aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &diffuseColor);
+
+            // Tworzymy dynamicznie na karcie graficznej teksturę 1x1 piksel o kolorze z pliku .mtl
+            unsigned int colorTextureID;
+            glGenTextures(1, &colorTextureID);
+            glBindTexture(GL_TEXTURE_2D, colorTextureID);
+
+            unsigned char r = static_cast<unsigned char>(diffuseColor.r * 255.0f);
+            unsigned char g = static_cast<unsigned char>(diffuseColor.g * 255.0f);
+            unsigned char b = static_cast<unsigned char>(diffuseColor.b * 255.0f);
+            unsigned char a = static_cast<unsigned char>(diffuseColor.a * 255.0f);
+            unsigned char pixelData[] = { r, g, b, a };
+
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+            texture.id = colorTextureID;
+            texture.type = "texture_diffuse";
+            texture.path = "embedded_material_color";
+        }
     }
 
     return Mesh(vertices, indices, texture);
 }
 
 unsigned int AssimpModel::loadTextureFromFile(const char* path, const std::string& directory) {
-    std::string filename = directory + '/' + std::string(path);
+
+    std::string cleanPath = path;
+
+    // BEZPIECZNIK: Usuwamy białe znaki, spacje i ukryte znaki końca linii (\r, \n) z pliku .mtl
+    cleanPath.erase(cleanPath.find_last_not_of(" \n\r\t") + 1);
+    cleanPath.erase(0, cleanPath.find_first_not_of(" \n\r\t"));
+
+    std::string filename = directory + '/' + cleanPath;
     unsigned int textureID;
     glGenTextures(1, &textureID);
 
     int width, height, nrComponents;
     unsigned char* data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
     if (data) {
-        GLenum format = (nrComponents == 4) ? GL_RGBA : GL_RGB;
+        GLenum internalFormat = GL_RGB;
+        GLenum dataFormat = GL_RGB;
+
+        if (nrComponents == 1) {
+            internalFormat = GL_RED;
+            dataFormat = GL_RED;
+        }
+        else if (nrComponents == 3) {
+            internalFormat = GL_RGB;
+            dataFormat = GL_RGB;
+        }
+        else if (nrComponents == 4) {
+            internalFormat = GL_RGBA;
+            dataFormat = GL_RGBA;
+        }
 
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+
+        // =========================================================================
+        // ROZWIĄZANIE PROBLEMU: Wyrównanie pikseli (Pixel Unpack Alignment)
+        // =========================================================================
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Wymuszamy wyrównanie do 1 bajtu (dla plików o dowolnych wymiarach)
+        GLint prevUnpack = 0;
+        glGetIntegerv(GL_UNPACK_ALIGNMENT, &prevUnpack);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
+
+        // Przywracamy domyślne wyrównanie OpenGL (dobra praktyka)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, prevUnpack);
+        // =========================================================================
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
         stbi_image_free(data);
+        std::cout << "Assimp: Sukces! Zaladowano teksture: " << filename << std::endl;
     }
     else {
-        std::cerr << "Assimp Texture failed to load at path: " << filename << std::endl;
+        // Zmienione wypisywanie błędu - pokaże dokładną ścieżkę w nawiasach kwadratowych
+        std::cerr << "Assimp: BLAD! Nie udalo sie znalezc pliku: [" << filename << "]" << std::endl;
         stbi_image_free(data);
     }
 

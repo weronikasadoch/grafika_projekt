@@ -19,6 +19,7 @@ struct TextureInfo {
     unsigned int id;
     std::string type;
     std::string path;
+    std::string color;
 };
 
 class Mesh {
@@ -45,6 +46,52 @@ public:
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
+
+    // Draw the mesh multiple times using an instance buffer containing mat4 transforms
+    void DrawInstanced(GLuint instanceBuffer, GLsizei instanceCount) const {
+        if (instanceCount <= 0) return;
+
+        // Bind the mesh VAO
+        glBindVertexArray(VAO);
+
+        // Bind instance buffer and setup per-instance attributes (mat4 -> 4 vec4 attributes)
+        glBindBuffer(GL_ARRAY_BUFFER, instanceBuffer);
+        constexpr GLsizei matrixStride = 16 * sizeof(float);
+        for (int column = 0; column < 4; ++column)
+        {
+            const GLuint attribute = static_cast<GLuint>(4 + column);
+            glEnableVertexAttribArray(attribute);
+            glVertexAttribPointer(
+                attribute,
+                4,
+                GL_FLOAT,
+                GL_FALSE,
+                matrixStride,
+                reinterpret_cast<void*>(static_cast<std::size_t>(column * 4) * sizeof(float))
+            );
+            glVertexAttribDivisor(attribute, 1);
+        }
+
+        // Bind texture if present
+        if (texture.id != 0) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture.id);
+        }
+
+        glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0, instanceCount);
+
+        // Cleanup: unbind instance buffer and disable instance attribs
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        for (int column = 0; column < 4; ++column)
+        {
+            const GLuint attribute = static_cast<GLuint>(4 + column);
+            glVertexAttribDivisor(attribute, 0);
+            glDisableVertexAttribArray(attribute);
+        }
+
+        glBindVertexArray(0);
+    }
+
     void destroy() {
         glDeleteBuffers(1, &EBO);
         glDeleteBuffers(1, &VBO);
