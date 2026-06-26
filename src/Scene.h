@@ -95,7 +95,7 @@ private:
     int height_;
     float lastFrameTime_ = 0.0f;
     float deltaTime_ = 0.0f;
-    float outlineThickness_ = 0.05f;
+    float outlineThickness_ = 0.08f;
     float cameraYawOffset_ = 0.0f; 
     float cameraHeightAbove_ = 1.0f;
 

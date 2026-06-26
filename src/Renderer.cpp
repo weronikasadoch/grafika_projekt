@@ -20,6 +20,7 @@
 namespace
 {
     constexpr float kPi = 3.14159265358979323846f;
+    constexpr float kHouseScale = 0.45f;
     constexpr int kJellyfishCount = 10;
     constexpr int kCoralModelCount = 10;
     constexpr int kCoralPlacementCount = 22;
@@ -317,9 +318,9 @@ bool Renderer::initialize()
         cacheUniformLocations();
     }
     const bool sandLoaded = sandModel_.loadFromObj("assets/models/scene/sand.obj");
-    const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house_1.obj");
-    const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house_1.obj");
-    const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house_1.obj");
+    const bool spongebobLoaded = spongebobModel_.loadFromObj("assets/models/houses/spongebob/spongebob_house.obj");
+    const bool patrickLoaded = patrickModel_.loadFromObj("assets/models/houses/patrick/patrick_house.obj");
+    const bool squidwardLoaded = squidwardModel_.loadFromObj("assets/models/houses/squidward/squidward_house.obj");
     const bool squidwardNpcLoaded = squidwardNpcModel_.loadFromObj("assets/models/squidward/squidward.obj");
     const bool characterLoaded = animatedCharacterModel_.loadFromGlb("assets/models/Spongebob_model/spongebob.glb");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
@@ -436,9 +437,9 @@ void Renderer::render(Scene& scene)
 
     renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.86f, 0.68f, 0.38f), 0.0f, 0.92f, false, nullptr, true, false, glm::vec3(0.04f, 0.12f, 0.13f), 0.0f, 0.96f, true);
     renderCoralsInstanced(view, projection, lightSpace, outlineThickness, &scene);
-    renderModel(spongebobModel_, spongebobTransform_, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.85f);
-    renderModel(patrickModel_, patrickTransform_, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f, false, &scene, 0.0f, 0.85f);
-    renderModel(squidwardModel_, squidwardTransform_, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), nullptr, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f, false, &scene, 0.0f, 0.85f);
+    renderModel(spongebobModel_, spongebobTransform_, view, projection, lightSpace, glm::vec3(1.0f, 0.72f, 0.20f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), spongebobModel_.diffuseTexture(), true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.85f);
+    renderModel(patrickModel_, patrickTransform_, view, projection, lightSpace, glm::vec3(0.76f, 0.48f, 0.38f), outlineThickness, 2.6f, scene.isToonShadingEnabled(), patrickModel_.diffuseTexture(), true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.88f, false, &scene, 0.0f, 0.85f);
+    renderModel(squidwardModel_, squidwardTransform_, view, projection, lightSpace, glm::vec3(0.48f, 0.66f, 0.70f), outlineThickness, 4.4f, scene.isToonShadingEnabled(), squidwardModel_.diffuseTexture(), true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.15f, 0.42f, false, &scene, 0.0f, 0.85f);
     renderModel(squidwardNpcModel_, squidwardNpcTransform_, view, projection, lightSpace, glm::vec3(0.54f, 0.76f, 0.78f), smallModelOutlineThickness, 1.8f, scene.isToonShadingEnabled(), nullptr, false, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.58f, false, &scene, 0.0f, 0.65f);
     renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
     renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false, &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
@@ -1071,7 +1072,7 @@ void Renderer::renderVillageHouses(const glm::mat4& view, const glm::mat4& proje
             modelOutlineThickness,
             materialBrightness,
             useToonShading,
-            nullptr,
+            getHouseModel(modelIndex).diffuseTexture(),
             true,
             false,
             glm::vec3(0.18f, 0.30f, 0.34f),
@@ -1284,8 +1285,15 @@ void Renderer::initializeStaticTransforms(Scene& scene)
         glm::vec3(0.45f)
     );
     squidwardTransform_ = glm::scale(
-        glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.20f, -2.6f)),
-        glm::vec3(0.45f)
+        glm::translate(
+            glm::mat4(1.0f),
+            glm::vec3(
+                3.0f,
+                scene.getSandHeight(3.0f, -2.6f) - squidwardModel_.minY() * kHouseScale,
+                -2.6f
+            )
+        ),
+        glm::vec3(kHouseScale)
     );
     squidwardNpcTransform_ = glm::scale(
         glm::rotate(
@@ -1405,12 +1413,12 @@ glm::mat4 Renderer::createVillageHouseTransform(int index, const Scene& scene) c
     const glm::vec2 offset = rotation * kVillageHouseOffsets[houseIndex];
     const float x = village.x + offset.x;
     const float z = village.z + offset.y;
-    const float yOffset = houseIndex == 2 ? -0.25f : 0.05f;
+    const float yOffset = houseIndex == 2 ? -squidwardModel_.minY() * kHouseScale : 0.05f;
 
     glm::mat4 model(1.0f);
     model = glm::translate(model, glm::vec3(x, scene.getSandHeight(x, z) + yOffset, z));
     model = glm::rotate(model, yaw + glm::radians(static_cast<float>(houseIndex) * 120.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.45f));
+    model = glm::scale(model, glm::vec3(kHouseScale));
     return model;
 }
 

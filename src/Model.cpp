@@ -18,6 +18,12 @@ namespace
 {
     constexpr int kVertexStride = 11;
 
+    struct MaterialInfo
+    {
+        std::array<float, 3> kd = {1.0f, 1.0f, 1.0f};
+        std::string mapKd;
+    };
+
     struct ObjVertex
     {
         int position = -1;
@@ -57,9 +63,9 @@ namespace
         return vertex;
     }
 
-    std::map<std::string, std::array<float, 3>> loadMtlDiffuseColors(const std::string& path)
+    std::map<std::string, MaterialInfo> loadMtlMaterials(const std::string& path)
     {
-        std::map<std::string, std::array<float, 3>> materials;
+        std::map<std::string, MaterialInfo> materials;
         std::ifstream file(path);
         if (!file)
         {
@@ -77,12 +83,26 @@ namespace
             if (command == "newmtl")
             {
                 stream >> activeMaterial;
+                materials[activeMaterial] = MaterialInfo{};
             }
             else if (command == "Kd" && !activeMaterial.empty())
             {
                 std::array<float, 3> color = {1.0f, 1.0f, 1.0f};
                 stream >> color[0] >> color[1] >> color[2];
-                materials[activeMaterial] = color;
+                materials[activeMaterial].kd = color;
+            }
+            else if ((command == "map_Kd" || command == "map_kd") && !activeMaterial.empty())
+            {
+                std::string token;
+                std::string lastToken;
+                while (stream >> token)
+                {
+                    lastToken = token;
+                }
+                if (!lastToken.empty())
+                {
+                    materials[activeMaterial].mapKd = lastToken;
+                }
             }
         }
 
@@ -104,6 +124,33 @@ namespace
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    GLuint loadTextureId(const std::string& path)
+    {
+        int width = 0;
+        int height = 0;
+        int channels = 0;
+        stbi_uc* pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        if (pixels == nullptr || width <= 0 || height <= 0)
+        {
+            std::cerr << "Failed to load image texture: " << path << '\n';
+            stbi_image_free(pixels);
+            return 0;
+        }
+
+        GLuint texture = 0;
+        uploadTexture(texture, width, height, GL_RGBA, pixels);
+        stbi_image_free(pixels);
+        return texture;
+    }
+
+    GLuint createWhiteTexture()
+    {
+        const std::array<unsigned char, 4> pixel = {255, 255, 255, 255};
+        GLuint texture = 0;
+        uploadTexture(texture, 1, 1, GL_RGBA, pixel.data());
+        return texture;
     }
 }
 
@@ -215,11 +262,41 @@ bool Model::loadFromObj(const std::string& path)
     std::vector<std::array<float, 3>> positions;
     std::vector<std::array<float, 2>> texCoords;
     std::vector<std::array<float, 3>> normals;
-    std::map<std::string, std::array<float, 3>> materials;
+    std::map<std::string, MaterialInfo> materials;
+    std::map<std::string, GLuint> loadedMaterialTextures;
     std::array<float, 3> currentColor = {1.0f, 1.0f, 1.0f};
+    GLuint currentTexture = 0;
+    bool currentHasTexture = false;
+    bool hasActiveDrawRange = false;
+    GLsizei activeRangeStart = 0;
+    GLuint activeRangeTexture = 0;
+    bool activeRangeHasTexture = false;
     const std::string directory = getDirectory(path);
     glm::vec3 minBounds(std::numeric_limits<float>::max());
     glm::vec3 maxBounds(std::numeric_limits<float>::lowest());
+
+    auto finishActiveDrawRange = [&]()
+    {
+        if (!hasActiveDrawRange)
+        {
+            return;
+        }
+
+        const GLsizei end = static_cast<GLsizei>(indices.size());
+        if (end > activeRangeStart)
+        {
+            drawRanges_.push_back({activeRangeStart, end - activeRangeStart, activeRangeTexture, activeRangeHasTexture});
+        }
+    };
+
+    auto startDrawRange = [&]()
+    {
+        finishActiveDrawRange();
+        hasActiveDrawRange = true;
+        activeRangeStart = static_cast<GLsizei>(indices.size());
+        activeRangeTexture = currentTexture;
+        activeRangeHasTexture = currentHasTexture;
+    };
 
     std::string line;
     while (std::getline(file, line))
@@ -232,14 +309,48 @@ bool Model::loadFromObj(const std::string& path)
         {
             std::string materialFile;
             stream >> materialFile;
-            materials = loadMtlDiffuseColors(directory + materialFile);
+            materials = loadMtlMaterials(directory + materialFile);
         }
         else if (command == "usemtl")
         {
             std::string materialName;
             stream >> materialName;
             const auto material = materials.find(materialName);
-            currentColor = material != materials.end() ? material->second : std::array<float, 3>{1.0f, 1.0f, 1.0f};
+            if (material != materials.end())
+            {
+                currentColor = material->second.kd;
+                currentTexture = 0;
+                currentHasTexture = false;
+                if (!material->second.mapKd.empty())
+                {
+                    const std::string texturePath = directory + material->second.mapKd;
+                    auto loadedTexture = loadedMaterialTextures.find(texturePath);
+                    if (loadedTexture == loadedMaterialTextures.end())
+                    {
+                        const GLuint texture = loadTextureId(texturePath);
+                        loadedTexture = loadedMaterialTextures.emplace(texturePath, texture).first;
+                        if (texture != 0)
+                        {
+                            materialTextures_.push_back(texture);
+                        }
+                    }
+
+                    currentTexture = loadedTexture->second;
+                    currentHasTexture = currentTexture != 0;
+                    if (!hasDiffuseTexture_ && currentHasTexture)
+                    {
+                        hasDiffuseTexture_ = diffuseTexture_.loadImage(texturePath);
+                    }
+                }
+            }
+            else
+            {
+                currentColor = {1.0f, 1.0f, 1.0f};
+                currentTexture = 0;
+                currentHasTexture = false;
+            }
+
+            startDrawRange();
         }
         else if (command == "v")
         {
@@ -267,6 +378,11 @@ bool Model::loadFromObj(const std::string& path)
         }
         else if (command == "f")
         {
+            if (!hasActiveDrawRange)
+            {
+                startDrawRange();
+            }
+
             std::vector<ObjVertex> face;
             std::string token;
             while (stream >> token)
@@ -313,6 +429,7 @@ bool Model::loadFromObj(const std::string& path)
             }
         }
     }
+    finishActiveDrawRange();
 
     if (vertices.empty() || indices.empty())
     {
@@ -323,6 +440,10 @@ bool Model::loadFromObj(const std::string& path)
     indexCount_ = static_cast<GLsizei>(indices.size());
     minBounds_ = minBounds;
     maxBounds_ = maxBounds;
+    if (!drawRanges_.empty() && whiteTexture_ == 0)
+    {
+        whiteTexture_ = createWhiteTexture();
+    }
 
     glGenVertexArrays(1, &vao_);
     glGenBuffers(1, &vbo_);
@@ -352,7 +473,24 @@ bool Model::loadFromObj(const std::string& path)
 void Model::draw() const
 {
     glBindVertexArray(vao_);
-    glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, nullptr);
+    if (drawRanges_.empty())
+    {
+        glDrawElements(GL_TRIANGLES, indexCount_, GL_UNSIGNED_INT, nullptr);
+    }
+    else
+    {
+        glActiveTexture(GL_TEXTURE0);
+        for (const DrawRange& range : drawRanges_)
+        {
+            glBindTexture(GL_TEXTURE_2D, range.hasTexture ? range.texture : whiteTexture_);
+            glDrawElements(
+                GL_TRIANGLES,
+                range.indexCount,
+                GL_UNSIGNED_INT,
+                reinterpret_cast<const void*>(static_cast<std::size_t>(range.indexOffset) * sizeof(unsigned int))
+            );
+        }
+    }
     glBindVertexArray(0);
 }
 
@@ -399,4 +537,18 @@ void Model::destroy()
     indexCount_ = 0;
     minBounds_ = glm::vec3(0.0f);
     maxBounds_ = glm::vec3(0.0f);
+
+    if (hasDiffuseTexture_)
+    {
+        diffuseTexture_.destroy();
+        hasDiffuseTexture_ = false;
+    }
+    for (GLuint texture : materialTextures_)
+    {
+        glDeleteTextures(1, &texture);
+    }
+    materialTextures_.clear();
+    drawRanges_.clear();
+    glDeleteTextures(1, &whiteTexture_);
+    whiteTexture_ = 0;
 }

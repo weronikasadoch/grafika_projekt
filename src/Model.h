@@ -4,6 +4,7 @@
 #include <glm.hpp>
 
 #include <string>
+#include <vector>
 
 class Texture
 {
@@ -32,13 +33,27 @@ public:
     glm::vec3 maxBounds() const { return maxBounds_; }
     float minY() const { return minBounds_.y; }
     float maxY() const { return maxBounds_.y; }
+    const Texture* diffuseTexture() const { return hasDiffuseTexture_ ? &diffuseTexture_ : nullptr; }
 
 private:
+    struct DrawRange
+    {
+        GLsizei indexOffset = 0;
+        GLsizei indexCount = 0;
+        GLuint texture = 0;
+        bool hasTexture = false;
+    };
+
     GLuint vao_ = 0;
     GLuint vbo_ = 0;
     GLuint ebo_ = 0;
     GLsizei indexCount_ = 0;
     glm::vec3 minBounds_ = glm::vec3(0.0f);
     glm::vec3 maxBounds_ = glm::vec3(0.0f);
+    Texture diffuseTexture_;
+    bool hasDiffuseTexture_ = false;
+    std::vector<GLuint> materialTextures_;
+    std::vector<DrawRange> drawRanges_;
+    GLuint whiteTexture_ = 0;
 
 };
