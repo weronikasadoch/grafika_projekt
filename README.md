@@ -2,14 +2,14 @@
 
 ## Zaimplementowane metody oświetlenia i renderowania
 
-- Światło kierunkowe: główne światło sceny ustawione za pomocą `kLightDirection`.
+- Directional light: główne światło sceny ustawione za pomocą `kLightDirection`.
 - Shadow mapping: scena jest najpierw renderowana do mapy głębokości z perspektywy światła, a następnie shadery PBR/Toon korzystają z `uShadowMap`.
-- Cieniowanie PBR: tryb materiałowy z parametrami `metallic`, `roughness`, `ao`, kolorem bazowym i teksturami.
-- Cieniowanie Toon: uproszczone cieniowanie kreskówkowe z progami jasności, włączane z poziomu menu.
-- Światło punktowe: dodatkowe światło powiązane ze świecącą meduzą.
-- Emisja: wybrane obiekty, np. świecąca meduza, mogą emitować kolor.
-- Kontur obiektów: obiekty są renderowane dodatkowym przebiegiem z odwróconym cullingiem, co tworzy efekt obrysu.
-- Proceduralny skybox: podwodny cubemap generowany w kodzie, z efektem jaśniejszej powierzchni, fal i kaustyki.
+- PBR shading: tryb materiałowy z parametrami `metallic`, `roughness`, `ao`, kolorem bazowym i teksturami.
+- Toon shading: uproszczone cieniowanie kreskówkowe z progami jasności, włączane z poziomu menu.
+- Point light: dodatkowe światło powiązane ze świecącą meduzą.
+- Emission: wybrane obiekty, np. świecąca meduza, mogą emitować kolor.
+- Outline rendering: obiekty są renderowane dodatkowym przebiegiem z odwróconym cullingiem, co tworzy efekt obrysu.
+- Procedural skybox: podwodny cubemap generowany w kodzie, z efektem jaśniejszej powierzchni, fal i kaustyki.
 
 ## Quest z meduzami
 
