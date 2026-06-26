@@ -1,0 +1,154 @@
+# Blender 5.1.2 MTL File: 'spongebob_scene.blend'
+# www.blender.org
+
+newmtl Backdoor1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka Backdoor1_diff.png
+map_Kd Backdoor1_diff.png
+map_d Backdoor1_diff.png
+
+
+newmtl Backdoor2Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka Backdoor2_diff.png
+map_Kd Backdoor2_diff.png
+map_d Backdoor2_diff.png
+
+newmtl Body1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Ka Body1_diff.png
+map_Kd Body1_diff.png
+map_d Body1_diff.png
+
+
+newmtl Chimney1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka Chimney1_diff.png
+map_Kd Chimney1_diff.png
+map_d Chimney1_diff.png
+
+newmtl ChimneyOutline1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.000367 0.007155 0.084642
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+
+
+newmtl Flowows1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka Flowows1_diff.png
+map_Kd Flowows1_diff.png
+map_d Flowows1_diff.png
+
+
+newmtl GarageDoor1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka GarageDoor1_diff.png
+map_Kd GarageDoor1_diff.png
+map_d GarageDoor1_diff.png
+
+newmtl Leaves1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka Leaves1_diff.png
+map_Kd Leaves1_diff.png
+map_d Leaves1_diff.png
+
+
+newmtl Outline1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.089194 0.037028 0.009696
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+
+newmtl RooofTop1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka RooofTop1_diff.png
+map_Kd RooofTop1_diff.png
+map_d RooofTop1_diff.png
+
+newmtl Window1Mtl
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1000.000000
+d 1.000000
+illum 2
+map_Ka Window1_diff.png
+map_Kd Window1_diff.png
+map_d Window1_diff.png
+
+newmtl stick.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd Image_0.001.jpg
