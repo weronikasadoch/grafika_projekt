@@ -23,8 +23,6 @@ bool AssimpModel::loadModel(const std::string& path) {
         return false;
     }
     directory = path.substr(0, path.find_last_of('/'));
-
-    // Reset bounds
     minBounds_ = glm::vec3(std::numeric_limits<float>::max());
     maxBounds_ = glm::vec3(std::numeric_limits<float>::lowest());
 

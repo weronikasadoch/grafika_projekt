@@ -1830,16 +1830,16 @@ glm::mat4 Renderer::createCoralTransform(int index, const Scene& scene) const
 glm::mat4 Renderer::createJellyfishTransform(int index, float elapsedTime) const
 {
     static const glm::vec3 basePositions[kJellyfishCount] = {
-    glm::vec3(-4.6f, -0.45f, -4.7f),
-    glm::vec3(-2.8f, -0.20f, -5.8f),
-    glm::vec3(-1.1f,  0.05f, -4.3f),
-    glm::vec3(1.4f, -0.10f, -5.5f),
-    glm::vec3(3.4f, -0.35f, -4.4f),
-    glm::vec3(4.7f,  0.10f, -2.2f),
-    glm::vec3(2.6f,  0.28f, -0.5f),
-    glm::vec3(0.0f,  0.02f, -0.2f),
-    glm::vec3(-2.4f,  0.20f, -1.2f),
-    glm::vec3(-4.2f, -0.15f, -2.6f)
+    glm::vec3(-25.0f, -0.45f, -30.0f),
+    glm::vec3(-15.0f, -0.20f, -25.0f),
+    glm::vec3(-5.0f,  0.05f, -20.0f),
+    glm::vec3(8.0f, -0.10f, -28.0f),
+    glm::vec3(20.0f, -0.35f, -22.0f),
+    glm::vec3(28.0f,  0.10f, 15.0f),
+    glm::vec3(15.0f,  0.28f, 25.0f),
+    glm::vec3(-10.0f,  0.02f, 20.0f),
+    glm::vec3(-22.0f,  0.20f, 10.0f),
+    glm::vec3(-30.0f, -0.15f, -10.0f)
     };
     static constexpr float radii[kJellyfishCount] = {0.55f, 0.42f, 0.62f, 0.48f, 0.58f, 0.38f, 0.52f, 0.44f, 0.60f, 0.46f};
     static constexpr float speeds[kJellyfishCount] = {0.82f, 0.64f, 0.74f, 0.91f, 0.57f, 0.86f, 0.69f, 0.78f, 0.61f, 0.73f};

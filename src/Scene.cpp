@@ -271,8 +271,8 @@ void Scene::updateDeltaTime(float currentFrameTime)
             Bubble newBubble;
 
             // Random start position on the sand
-            float randomX = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
-            float randomZ = -10.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 20.0f);
+            float randomX = -42.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 84.0f);
+            float randomZ = -42.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 84.0f);
             float startY = getSandHeight(randomX, randomZ);
 
             glm::vec3 startPos(randomX, startY, randomZ);
