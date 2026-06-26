@@ -1162,7 +1162,7 @@ void Renderer::renderCoralsInstanced(const glm::mat4& view, const glm::mat4& pro
     setMat4(outlineUniforms_.model, glm::mat4(1.0f));
     setMat4(outlineUniforms_.view, view);
     setMat4(outlineUniforms_.projection, projection);
-    setFloat(outlineUniforms_.outlineThickness, outlineThickness * 0.32f);
+    setFloat(outlineUniforms_.outlineThickness, outlineThickness * 0.20f);
     setVec3(outlineUniforms_.outlineColor, glm::vec3(0.0f, 0.04f, 0.22f));
     setInt(outlineUniforms_.useInstancing, 1);
 

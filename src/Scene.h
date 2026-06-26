@@ -10,8 +10,8 @@ struct GLFWwindow;
 class Scene
 {
 public:
-    static constexpr float kOutlineMinThickness = 0.01f;
-    static constexpr float kOutlineMaxThickness = 0.12f;
+    static constexpr float kOutlineMinThickness = 0.04f;
+    static constexpr float kOutlineMaxThickness = 0.09f;
     static constexpr int kMinJellyfishCount = 0;
     static constexpr int kMaxJellyfishCount = 10;
     static constexpr int kCollectibleJellyfishCount = 5;
