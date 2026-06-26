@@ -1,27 +1,27 @@
-# Grafika projekt "Swiat Spongeboba"
+# Projekt z grafiki komputerowej: "Świat SpongeBoba"
 
-## Implementowane metody oswietlenia i renderowania
+## Zaimplementowane metody oświetlenia i renderowania
 
-- Directional light: glowne swiatlo sceny ustawione przez `kLightDirection`.
-- Shadow mapping: scena jest najpierw renderowana do mapy glebokosci z perspektywy swiatla, a potem shadery PBR/Toon probkuja `uShadowMap`.
-- PBR shading: tryb materialowy z parametrami `metallic`, `roughness`, `ao`, kolorem bazowym i teksturami.
-- Toon shading: uproszczone progowe cieniowanie kreskowkowe wlaczane z menu.
-- Point light: dodatkowe swiatlo punktowe powiazane ze swiecaca meduza.
-- Emission: wybrane obiekty, np. swiecaca meduza, moga emitowac kolor.
-- Outline rendering: obiekty sa rysowane dodatkowym przebiegiem z odwracanym cullingiem, co tworzy kontur.
-- Procedural skybox: podwodny cubemap generowany w kodzie, z efektem jasniejszej powierzchni, fal i caustics.
+- Światło kierunkowe: główne światło sceny ustawione za pomocą `kLightDirection`.
+- Shadow mapping: scena jest najpierw renderowana do mapy głębokości z perspektywy światła, a następnie shadery PBR/Toon korzystają z `uShadowMap`.
+- Cieniowanie PBR: tryb materiałowy z parametrami `metallic`, `roughness`, `ao`, kolorem bazowym i teksturami.
+- Cieniowanie Toon: uproszczone cieniowanie kreskówkowe z progami jasności, włączane z poziomu menu.
+- Światło punktowe: dodatkowe światło powiązane ze świecącą meduzą.
+- Emisja: wybrane obiekty, np. świecąca meduza, mogą emitować kolor.
+- Kontur obiektów: obiekty są renderowane dodatkowym przebiegiem z odwróconym cullingiem, co tworzy efekt obrysu.
+- Proceduralny skybox: podwodny cubemap generowany w kodzie, z efektem jaśniejszej powierzchni, fal i kaustyki.
 
 ## Quest z meduzami
 
-- Quest startuje przy Squidwardzie po nacisnieciu `SPACE`.
-- Po starcie odtwarzany jest dzwiek `spongebob-task-start.mp3`.
-- Po zakonczeniu dzwieku aktywuje sie 5 bialych meduz do zebrania.
-- Meduzy znajduja sie w innej wiosce, dalej od centrum sceny.
-- Gracz moze zebrac meduze, gdy jest blisko niej i nacisnie `SPACE`.
-- Licznik questu pokazuje postep: `Bring 5 white jellyfish to Squidward. X/5`.
-- Po zebraniu 5 meduz tekst zmienia sie na powrot do Squidwarda.
-- Po powrocie do Squidwarda i nacisnieciu `ENTER` quest zostaje zakonczony.
-- Przy zakonczeniu odtwarzany jest dzwiek zadania koncowego.
+- Quest rozpoczyna się przy Squidwardzie po naciśnięciu `SPACE`.
+- Po rozpoczęciu zadania odtwarzany jest dźwięk `spongebob-task-start.mp3`.
+- Po zakończeniu dźwięku aktywuje się 5 białych meduz do zebrania.
+- Meduzy znajdują się w innej wiosce, dalej od centrum sceny.
+- Gracz może zebrać meduzę, gdy znajduje się blisko niej i naciśnie `SPACE`.
+- Licznik questu pokazuje postęp: `Bring 5 white jellyfish to Squidward. X/5`.
+- Po zebraniu 5 meduz tekst zmienia się na informację o powrocie do Squidwarda.
+- Po powrocie do Squidwarda i naciśnięciu `ENTER` quest zostaje zakończony.
+- Po zakończeniu zadania odtwarzany jest dźwięk końcowy.
 
 ## Uruchomienie
 
