@@ -30,5 +30,12 @@ cmake_install.cmake
 Makefile
 compile_commands.json
 
-# macOS
+# Windows 
+.vs/
+ipch/
+*.ipch
+
+# macOS 
 .DS_Store
+.AppleDouble
+.LSOverride

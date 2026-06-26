@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(APP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(APP_SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+set(APP_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 
 add_executable(grafika_projekt
     "${APP_SOURCE_DIR}/main.cpp"
@@ -18,16 +19,29 @@ add_executable(grafika_projekt
     "${APP_SOURCE_DIR}/Scene.cpp"
     "${APP_SOURCE_DIR}/Renderer.h"
     "${APP_SOURCE_DIR}/Renderer.cpp"
+    "${APP_SOURCE_DIR}/Model.h"
+    "${APP_SOURCE_DIR}/Model.cpp"
+    "${APP_SOURCE_DIR}/AnimatedModel.h"
+    "${APP_SOURCE_DIR}/AnimatedModel.cpp"
     "${APP_SOURCE_DIR}/Render_Utils.h"
     "${APP_SOURCE_DIR}/Render_Utils.cpp"
     "${APP_SOURCE_DIR}/Shader_Loader.h"
     "${APP_SOURCE_DIR}/Shader_Loader.cpp"
     "${APP_SOURCE_DIR}/objload.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui_draw.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui_tables.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/imgui_widgets.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.cpp"
 )
 
 target_include_directories(grafika_projekt PRIVATE
     "${APP_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/glm"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/imgui/backends"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies"
 )
 
 find_package(OpenGL REQUIRED)
@@ -37,6 +51,7 @@ if(WIN32)
     target_include_directories(grafika_projekt PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/glew-2.0.0/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/glfw-3.3.8.bin.WIN64/include"
+
     )
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -81,4 +96,7 @@ add_custom_command(TARGET grafika_projekt POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${APP_SHADER_DIR}"
         "$<TARGET_FILE_DIR:grafika_projekt>/shaders"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${APP_ASSET_DIR}"
+        "$<TARGET_FILE_DIR:grafika_projekt>/assets"
 )

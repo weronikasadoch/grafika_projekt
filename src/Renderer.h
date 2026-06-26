@@ -3,53 +3,180 @@
 #include <GL/glew.h>
 #include <glm.hpp>
 
+#include "AnimatedModel.h"
+#include "Model.h"
+
+#include <array>
+
 class Scene;
 
 class Renderer
 {
 public:
     bool initialize();
-    void render(const Scene& scene);
+    void render(Scene& scene);
     void shutdown();
 
 private:
-    struct Mesh
+    struct OutlineUniforms
     {
-        GLuint vao = 0;
-        GLuint vbo = 0;
-        GLuint ebo = 0;
-        GLsizei indexCount = 0;
+        GLint model = -1;
+        GLint view = -1;
+        GLint projection = -1;
+        GLint outlineThickness = -1;
+        GLint outlineColor = -1;
+        GLint useInstancing = -1;
     };
 
-    void renderSphere(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& baseColor, float outlineThickness) const;
-    void renderMesh(const Mesh& mesh, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, bool receiveShadow) const;
-    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& leftSphere, const glm::mat4& rightSphere) const;
-    void renderShadowCaster(const glm::mat4& lightSpace, const glm::mat4& model) const;
-    void renderOutlineSlider(const Scene& scene) const;
-    Mesh createSphereMesh(float radius, int sectors, int stacks) const;
-    Mesh createSandMesh(float size) const;
-    void createUiResources();
-    bool createShadowResources();
-    void deleteMesh(const Mesh& mesh) const;
-    void deleteUiResources();
-    void deleteShadowResources();
-    void drawSphere() const;
-    void drawMesh(const Mesh& mesh) const;
-    void drawUiQuad(float x, float y, float width, float height, const glm::vec3& color) const;
-    glm::mat4 createLightSpaceMatrix() const;
-    void setMat4(GLuint program, const char* name, const glm::mat4& value) const;
-    void setVec3(GLuint program, const char* name, const glm::vec3& value) const;
-    void setFloat(GLuint program, const char* name, float value) const;
-    void setInt(GLuint program, const char* name, int value) const;
+    struct PbrUniforms
+    {
+        GLint model = -1;
+        GLint view = -1;
+        GLint projection = -1;
+        GLint lightSpaceMatrix = -1;
+        GLint baseColor = -1;
+        GLint cameraPosition = -1;
+        GLint lightDirection = -1;
+        GLint lightColor = -1;
+        GLint ambientColor = -1;
+        GLint useMaterialColor = -1;
+        GLint useDiffuseTexture = -1;
+        GLint materialBrightness = -1;
+        GLint metallic = -1;
+        GLint roughness = -1;
+        GLint ao = -1;
+        GLint useFastPbr = -1;
+        GLint useInstancing = -1;
+        GLint pointLightPosition = -1;
+        GLint pointLightColor = -1;
+        GLint pointLightIntensity = -1;
+        GLint pointLightRadius = -1;
+        GLint useEmission = -1;
+        GLint diffuseTexture = -1;
+        GLint shadowMap = -1;
+    };
 
+    struct ToonUniforms
+    {
+        GLint model = -1;
+        GLint view = -1;
+        GLint projection = -1;
+        GLint lightSpaceMatrix = -1;
+        GLint baseColor = -1;
+        GLint lightDirection = -1;
+        GLint ambientColor = -1;
+        GLint useToonShading = -1;
+        GLint useMaterialColor = -1;
+        GLint useDiffuseTexture = -1;
+        GLint materialBrightness = -1;
+        GLint useInstancing = -1;
+        GLint pointLightPosition = -1;
+        GLint pointLightColor = -1;
+        GLint pointLightIntensity = -1;
+        GLint pointLightRadius = -1;
+        GLint useEmission = -1;
+        GLint diffuseTexture = -1;
+        GLint shadowMap = -1;
+    };
+
+    struct SkyboxUniforms
+    {
+        GLint view = -1;
+        GLint projection = -1;
+        GLint skybox = -1;
+    };
+
+    struct ShadowUniforms
+    {
+        GLint model = -1;
+        GLint lightSpaceMatrix = -1;
+        GLint useInstancing = -1;
+    };
+
+    void renderModel(const Model& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture = nullptr, bool useMaterialColor = true, bool useEmission = false, const glm::vec3& ambientColor = glm::vec3(0.18f, 0.30f, 0.34f), float metallic = 0.0f, float roughness = 0.75f, bool useFastPbr = false, Scene* collisionScene = nullptr, float collisionPadding = 0.0f, float collisionFootprintScale = 0.72f) const;
+    void renderAnimatedModel(const AnimatedModel& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture = nullptr, bool useMaterialColor = true, bool useEmission = false, const glm::vec3& ambientColor = glm::vec3(0.18f, 0.30f, 0.34f), float metallic = 0.0f, float roughness = 0.75f, bool useFastPbr = false) const;
+    template <typename AssetModel>
+    void drawModelSurface(const AssetModel& assetModel, const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, const glm::vec3& baseColor, float outlineThickness, float materialBrightness, bool useToonShading, const Texture* diffuseTexture, bool useMaterialColor, bool useEmission, const glm::vec3& ambientColor, float metallic, float roughness, bool useFastPbr) const;
+    void renderCoralsInstanced(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, float outlineThickness, Scene* collisionScene) const;
+    void renderSkybox(const glm::mat4& view, const glm::mat4& projection) const;
+    void renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spongebobTransform, const glm::mat4& patrickTransform, const glm::mat4& squidwardTransform, const glm::mat4& characterTransform, const Scene& scene, int jellyfishCount) const;
+    void renderModelShadowCaster(const Model& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
+    void renderAnimatedModelShadowCaster(const AnimatedModel& assetModel, const glm::mat4& lightSpace, const glm::mat4& model) const;
+    void renderCoralShadowCastersInstanced(const glm::mat4& lightSpace) const;
+    void renderVillageHouses(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, float outlineThickness, bool useToonShading, Scene* collisionScene) const;
+    void renderVillageHouseShadowCasters(const glm::mat4& lightSpace) const;
+    bool createSkyboxResources();
+    bool createUnderwaterCubemap();
+    bool createShadowResources();
+    void deleteSkyboxResources();
+    void deleteShadowResources();
+    void cacheUniformLocations();
+    GLint getUniformLocation(GLuint program, const char* name) const;
+    void initializeStaticTransforms(Scene& scene);
+    void addModelCollision(Scene& scene, const Model& assetModel, const glm::mat4& model, float padding = 0.0f, float footprintScale = 0.72f) const;
+    void addModelCollisionEllipse(Scene& scene, const Model& assetModel, const glm::mat4& model, float padding = 0.0f, float footprintScale = 0.72f) const;
+    const Model& getCoralModel(int modelIndex) const;
+    const Model& getHouseModel(int modelIndex) const;
+    glm::vec3 getHouseColor(int modelIndex) const;
+    glm::mat4 createVillageHouseTransform(int index, const Scene& scene) const;
+    glm::mat4 createVillageCoralTransform(int index, const Scene& scene) const;
+    glm::mat4 createCoralTransform(int index, const Scene& scene) const;
+    glm::mat4 createJellyfishTransform(int index, float elapsedTime) const;
+    glm::mat4 createCollectibleJellyfishTransform(const glm::vec3& position, int index, float elapsedTime) const;
+    glm::mat4 createLightSpaceMatrix() const;
+    void setMat4(GLint location, const glm::mat4& value) const;
+    void setVec3(GLint location, const glm::vec3& value) const;
+    void setFloat(GLint location, float value) const;
+    void setInt(GLint location, int value) const;
+
+    glm::vec3 pointLightPosition_ = glm::vec3(0.0f);
+    glm::vec3 pointLightColor_ = glm::vec3(0.40f, 0.95f, 1.0f);
+    float pointLightIntensity_ = 0.9f;
+    float pointLightRadius_ = 2.4f;
     GLuint toonProgram_ = 0;
+    GLuint pbrProgram_ = 0;
     GLuint outlineProgram_ = 0;
-    GLuint uiProgram_ = 0;
+    GLuint skyboxProgram_ = 0;
     GLuint shadowProgram_ = 0;
+    OutlineUniforms outlineUniforms_;
+    PbrUniforms pbrUniforms_;
+    ToonUniforms toonUniforms_;
+    SkyboxUniforms skyboxUniforms_;
+    ShadowUniforms shadowUniforms_;
+    GLuint skyboxVao_ = 0;
+    GLuint skyboxVbo_ = 0;
+    GLuint skyboxCubemap_ = 0;
+    GLuint coralInstanceVbo_ = 0;
     GLuint shadowFbo_ = 0;
     GLuint shadowDepthTexture_ = 0;
-    GLuint uiVao_ = 0;
-    GLuint uiVbo_ = 0;
-    Mesh sphere_;
-    Mesh sand_;
+    std::array<glm::mat4, 22> coralTransforms_ = {};
+    std::array<glm::mat4, 15> villageHouseTransforms_ = {};
+    std::array<glm::mat4, 25> villageCoralTransforms_ = {};
+    glm::mat4 spongebobTransform_ = glm::mat4(1.0f);
+    glm::mat4 patrickTransform_ = glm::mat4(1.0f);
+    glm::mat4 squidwardTransform_ = glm::mat4(1.0f);
+    glm::mat4 squidwardNpcTransform_ = glm::mat4(1.0f);
+    bool staticTransformsInitialized_ = false;
+    Model sandModel_;
+    Model spongebobModel_;
+    Model patrickModel_;
+    Model squidwardModel_;
+    Model squidwardNpcModel_;
+    AnimatedModel animatedCharacterModel_;
+    Model jellyfishModel_;
+    Model garyModel_;
+    Model bubbleModel_;
+    Model coral1Model_;
+    Model coral2Model_;
+    Model coral3Model_;
+    Model coral4Model_;
+    Model coral5Model_;
+    Model coral6Model_;
+    Model coral7Model_;
+    Model coral8Model_;
+    Model coral9Model_;
+    Model coral10Model_;
+    Texture spongebobFallbackTexture_;
+    Texture animatedSpongebobTexture_;
+
 };

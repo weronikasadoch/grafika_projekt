@@ -1,9 +1,10 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #include "Renderer.h"
 #include "Scene.h"
-
 #include <iostream>
 
 namespace
@@ -42,7 +43,6 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -63,6 +63,7 @@ int main()
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     Scene scene(kWindowWidth, kWindowHeight);
     glfwSetWindowUserPointer(window, &scene);
@@ -88,18 +89,48 @@ int main()
         return -1;
     }
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330 core");
+
     scene.updateDeltaTime(static_cast<float>(glfwGetTime()));
 
     while (!glfwWindowShouldClose(window))
     {
         scene.updateDeltaTime(static_cast<float>(glfwGetTime()));
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (scene.isMenuOpen())
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+        else
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+            double mouseX = 0.0, mouseY = 0.0;
+            glfwGetCursorPos(window, &mouseX, &mouseY);
+            scene.handleMouseMovement(mouseX, mouseY);
+        }
+
         scene.processInput(window);
         renderer.render(scene);
+        scene.renderUi(window);
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     renderer.shutdown();
     glfwDestroyWindow(window);
     glfwTerminate();
