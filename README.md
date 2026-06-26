@@ -1,4 +1,4 @@
 # Grafika projekt "Świat Spongeboba"
 
 ## Uruchomienie
-Proszę uruchamiać projekt z brancha "new-branch"
+Proszę uruchamiać projekt z brancha "main"
