@@ -14,7 +14,7 @@ public:
     static constexpr float kOutlineMinThickness = 0.01f;
     static constexpr float kOutlineMaxThickness = 0.12f;
     static constexpr int kMinJellyfishCount = 0;
-    static constexpr int kMaxJellyfishCount = 10;
+    static constexpr int kMaxJellyfishCount = 30;  
     static constexpr int kCollectibleJellyfishCount = 5;
     static constexpr int kGarySoundsCount = 4;
 
@@ -31,6 +31,7 @@ public:
     float getFramebufferWidth() const;
     float getFramebufferHeight() const;
     float getElapsedTime() const;
+    float getDeltaTime() const;
     float getOutlineThickness() const;
     int getJellyfishCount() const;
     float getJellyfishAnimationTime(int index) const;
@@ -49,6 +50,7 @@ public:
     glm::vec3 getCharacterPosition() const { return characterPosition_; }
     float getCharacterYaw() const { return characterYaw_; }
     bool isCharacterMoving() const { return characterMoving_; }
+    float getCharacterMovementSpeed() const { return characterMovementSpeed_; }
     void handleMouseMovement(double xpos, double ypos);
     struct Bubble
     {
@@ -121,12 +123,14 @@ private:
     bool patrickDancing_ = false;
 
 
-    glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, -5.0f);  // Bardziej w tył (było -1.0f)
+    glm::vec3 characterPosition_ = glm::vec3(0.0f, -1.0f, 0.5f);  
     float characterYaw_ = -90.0f;
     bool characterMoving_ = false;
+    float characterMovementSpeed_ = 0.0f;  
     float cameraDistance_ = 2.5f;
     std::vector<Bubble> bubbles_;
     float bubbleSpawnTimer_ = 0.0f;
+    int maxBubbleCount_ = 50;  
     struct ma_engine* audioEngine_ = nullptr;
     struct ma_sound* backgroundMusic_ = nullptr;
     struct ma_sound* taskStartSound_ = nullptr;

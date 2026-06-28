@@ -467,7 +467,7 @@ bool AnimatedModel::loadFromGlb(const std::string& path)
             impl_->animations.push_back(animation);
         }
     }
-    
+
     setActiveAnimation("spongebob_idle01.anm");
     if (impl_->activeAnimation < 0 && !impl_->animations.empty())
     {

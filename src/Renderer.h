@@ -79,6 +79,14 @@ private:
         GLint shadowMap = -1;
     };
 
+    float characterAnimationTime_ = 0.0f;
+    bool wasCharacterMoving_ = false;
+    static constexpr float kIdleAnimationSpeed = 1.0f;          
+    static constexpr float kWalkAnimationSpeedMultiplier = 0.65f; 
+    static constexpr float kMinWalkAnimationSpeed = 0.8f;        
+    static constexpr float kMaxWalkAnimationSpeed = 2.2f;        
+    static constexpr bool kDebugAnimationSpeed = false;          
+
     struct SkyboxUniforms
     {
         GLint view = -1;
@@ -117,7 +125,7 @@ private:
     void addModelCollision(Scene& scene, const AssimpModel& assetModel, const glm::mat4& model, float padding = 0.0f, float footprintScale = 0.72f) const;
     void addModelCollisionEllipse(Scene& scene, const Model& assetModel, const glm::mat4& model, float padding = 0.0f, float footprintScale = 0.72f) const;
     const Model& getCoralModel(int modelIndex) const;
-    //const Model& getHouseModel(int modelIndex) const;
+    //const AssimpModel& getHouseModel(int modelIndex) const;
     glm::vec3 getHouseColor(int modelIndex) const;
     glm::mat4 createVillageHouseTransform(int index, const Scene& scene) const;
     glm::mat4 createVillageCoralTransform(int index, const Scene& scene) const;
@@ -161,12 +169,16 @@ private:
     glm::mat4 squidwardTransform_ = glm::mat4(1.0f);
     glm::mat4 squidwardNpcTransform_ = glm::mat4(1.0f);
     glm::mat4 patrickNpcTransform_;
+    glm::mat4 kraboburgerTransform_ = glm::mat4(1.0f);
+    glm::mat4 lighthouseTransform_ = glm::mat4(1.0f);
     bool staticTransformsInitialized_ = false;
     Model sandModel_;
     AssimpModel spongebobModel_;
     AssimpModel patrickModel_;
     AssimpModel squidwardModel_;
-    AssimpModel squidwardNpcModel_;  // Powrót do AssimpModel (u¿ywa OBJ)
+    AssimpModel kraboburgerModel_;
+    AssimpModel lighthouseModel_;
+    AnimatedModel squidwardNpcModel_;  
     AnimatedModel animatedCharacterModel_;
     AnimatedModel patrickNpcModel_;
     Model jellyfishModel_;

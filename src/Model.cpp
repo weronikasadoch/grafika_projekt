@@ -17,7 +17,7 @@
 struct MaterialInfo
 {
     std::array<float, 3> kd = { 1.0f,1.0f,1.0f };
-    std::string mapKd; // texture filename if present
+    std::string mapKd; 
 };
 
 std::map<std::string, MaterialInfo> loadMtlMaterials(const std::string& path)

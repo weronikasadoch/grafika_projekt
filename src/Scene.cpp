@@ -24,8 +24,8 @@ namespace
     constexpr float kPatrickInteractionRadius = 2.0f; 
     constexpr float kGaryInteractionRadius = 1.2f; 
     const glm::vec2 kGaryPosition(2.5f, -1.0f);
-    const glm::vec2 kPatrickPosition(-5.0f, -3.0f);
-    const glm::vec2 kSquidwardQuestPosition(2.5f, -5.0f);  // Po prawej od SpongeBoba
+    const glm::vec2 kPatrickPosition(-10.0f, -.9f);
+    const glm::vec2 kSquidwardQuestPosition(0.0f, -3.0f);  
     const glm::vec3 kCollectibleJellyfishPositions[Scene::kCollectibleJellyfishCount] = {
         glm::vec3(24.6f, 0.12f,  5.4f),
         glm::vec3(25.2f, 0.18f,  6.7f),
@@ -139,7 +139,9 @@ void Scene::processInput(GLFWwindow* window)
     }
     characterPosition_ = applyCharacterPhysics(candidatePosition);
     const glm::vec2 movement(characterPosition_.x - previousPosition.x, characterPosition_.z - previousPosition.z);
-    characterMoving_ = glm::dot(movement, movement) > 0.000001f;
+    const float movementDistance = glm::length(movement);
+    characterMoving_ = movementDistance > 0.000001f;
+    characterMovementSpeed_ = deltaTime_ > 0.0f ? movementDistance / deltaTime_ : 0.0f;
     const float zoomSpeed = 2.0f * deltaTime_;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     {
@@ -263,37 +265,29 @@ void Scene::updateDeltaTime(float currentFrameTime)
         collectibleJellyfishActive_.fill(true);
     }
     bubbleSpawnTimer_ += deltaTime_;
-    if (bubbleSpawnTimer_ >= 0.3f)
+
+    const float spawnInterval = 0.1f; 
+    const int bubblesPerSpawn = std::max(1, maxBubbleCount_ / 25);  
+
+    if (bubbleSpawnTimer_ >= spawnInterval)
     {
         bubbleSpawnTimer_ = 0.0f;
-        if (bubbles_.size() < 40)
+        for (int spawnCount = 0; spawnCount < bubblesPerSpawn && bubbles_.size() < static_cast<size_t>(maxBubbleCount_); ++spawnCount)
         {
             Bubble newBubble;
-
-            // Random start position on the sand
             float randomX = -42.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 84.0f);
             float randomZ = -42.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 84.0f);
             float startY = getSandHeight(randomX, randomZ);
-
             glm::vec3 startPos(randomX, startY, randomZ);
-
-            // Random end position high above
             float endY = startY + 8.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 3.0f);
-
-            // Random bubble size
             float randomFraction = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
             newBubble.size = 0.05f + randomFraction * (0.15f - 0.05f);
-
-            // Random speed (how fast it moves along the curve)
             newBubble.speed = 0.08f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 0.12f);
             newBubble.pathProgress = 0.0f;
 
-            // Choose random path type: 50% spiral, 50% Bezier curve
             bool useSpiral = (rand() % 2) == 0;
-
             if (useSpiral)
             {
-                // Generate spiral path with PTF
                 float radius = 0.3f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 0.5f);
                 float turns = 1.5f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / 2.0f);
                 newBubble.path = CurvePathGenerator::generateSpiralPathWithPTF(
@@ -340,8 +334,9 @@ void Scene::updateDeltaTime(float currentFrameTime)
             }
 
             bubbles_.push_back(newBubble);
-        }
+        }  
     }
+
     for (auto it = bubbles_.begin(); it != bubbles_.end(); )
     {
         it->pathProgress += it->speed * deltaTime_;
@@ -435,6 +430,14 @@ void Scene::renderUi(GLFWwindow* window)
     outlineThickness_ = std::clamp(outlineThickness_, kOutlineMinThickness, kOutlineMaxThickness);
 
     ImGui::Separator();
+    ImGui::Text("Scene Objects");
+    ImGui::SliderInt("Jellyfish Count", &jellyfishCount_, 0, kMaxJellyfishCount);
+    jellyfishCount_ = std::clamp(jellyfishCount_, 0, kMaxJellyfishCount);
+    ImGui::SliderInt("Max Bubbles", &maxBubbleCount_, 0, 200);
+    maxBubbleCount_ = std::clamp(maxBubbleCount_, 0, 200);
+    ImGui::Text("Active Bubbles: %zu", bubbles_.size());
+
+    ImGui::Separator();
     if (ImGui::Button("Quit", ImVec2(-1.0f, 0.0f)))
     {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -471,6 +474,11 @@ float Scene::getFramebufferHeight() const
 float Scene::getElapsedTime() const
 {
     return lastFrameTime_;
+}
+
+float Scene::getDeltaTime() const
+{
+    return deltaTime_;
 }
 
 float Scene::getOutlineThickness() const

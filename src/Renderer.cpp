@@ -11,6 +11,7 @@
 #include <array>
 #include <cmath>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <random>
 #include <sstream>
@@ -21,12 +22,12 @@
 namespace
 {
     constexpr float kPi = 3.14159265358979323846f;
-    constexpr int kJellyfishCount = 10;
+    constexpr int kJellyfishCount = 30;  // Zwiększona maksymalna liczba meduz z 10 do 30
     constexpr int kCoralModelCount = 13; 
     constexpr int kCoralPlacementCount = 27;
     constexpr int kVisibleCoralInstanceCount = kCoralPlacementCount;
     constexpr int kVillageCount = 8;
-    constexpr int kVillageHouseCount = kVillageCount * 3;  
+    constexpr int kVillageHouseCount = kVillageCount * 3;
     constexpr int kVillageCoralCount = kVillageCount * 8;  
     constexpr int kExtraBigCoralCount = 12;  
     constexpr int kShadowMapSize = 5096;
@@ -36,9 +37,9 @@ namespace
     constexpr float kShadowLightDistance = 55.0f;
     constexpr float kShadowFarPlane = 110.0f;
     constexpr float kHighFaceCoralLowerOffset = 0.28f;
-    constexpr float kSquidwardNpcX = 2.5f;      // Po prawej od SpongeBoba (SpongeBob na 0.0f)
-    constexpr float kSquidwardNpcZ = -5.0f;     // Na tej samej głębokości co SpongeBob
-    constexpr float kSquidwardNpcScale = 0.002f;
+    constexpr float kSquidwardNpcX = 0.8f;      // Bliżej środka, tuż obok SpongeBoba
+    constexpr float kSquidwardNpcZ = 0.5f;      // Blisko kamery, na tej samej głębokości co SpongeBob
+    constexpr float kSquidwardNpcScale = 0.45f;  // Trochę większy niż Patrick (0.3f)
     const glm::vec3 kLightDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 
     struct DecorationPlacement
@@ -342,7 +343,12 @@ bool Renderer::initialize()
     const bool spongebobLoaded = spongebobModel_.loadModel("assets/models/houses/spongebob/spongebob_house.obj");
     const bool patrickLoaded = patrickModel_.loadModel("assets/models/houses/patrick/patrick_house.obj");
     const bool squidwardLoaded = squidwardModel_.loadModel("assets/models/houses/squidward/squidward_house.obj");
-    const bool squidwardNpcLoaded = squidwardNpcModel_.loadModel("assets/models/squidward/squidward.obj");  // Powrót do OBJ
+    const bool kraboburgerLoaded = kraboburgerModel_.loadModel("assets/models/houses/kraboburger/kraboburger.obj");
+    const bool lighthouseLoaded = lighthouseModel_.loadModel("assets/models/houses/lighthouse/lighthouse.obj");
+    const bool squidwardNpcLoaded = squidwardNpcModel_.loadFromGlb("assets/models/squidward/squidward.glb");  // Zmiana na GLB
+    if (!squidwardNpcLoaded) {
+        std::cerr << "BŁĄD: Nie udało się załadować modelu Squidward NPC (squidward.glb)!\n";
+    }
     const bool patrickNpcLoaded = patrickNpcModel_.loadFromGlb("assets/models/Patrick/patrick_star.glb");
     const bool characterLoaded = animatedCharacterModel_.loadFromGlb("assets/models/Spongebob_model/spongebob.glb");
     const bool jellyfishLoaded = jellyfishModel_.loadFromObj("assets/models/Jellyfish_model/jellyfish_model.obj");
@@ -397,7 +403,18 @@ bool Renderer::initialize()
         patrickNpcTextureLoaded = true;
     }
 
-    // squidwardNpcModel_ używa AssimpModel (OBJ) - tekstury ładowane automatycznie z MTL
+    // Załadowanie tekstury Squidward NPC z GLB
+    bool squidwardNpcTextureLoaded = false;
+    if (squidwardNpcModel_.hasEmbeddedBaseColorTexture())
+    {
+        const std::vector<unsigned char>& squidwardImageData = squidwardNpcModel_.embeddedBaseColorTexture();
+        squidwardNpcTextureLoaded = squidwardNpcTexture_.loadImageData(squidwardImageData.data(), static_cast<int>(squidwardImageData.size()));
+    }
+    if (!squidwardNpcTextureLoaded)
+    {
+        squidwardNpcTexture_.createSolidColor(100, 200, 200);  // Cyan fallback dla Squidwarda
+        squidwardNpcTextureLoaded = true;
+    }
 
     const bool skyboxResourcesCreated = createSkyboxResources();
     const bool shadowResourcesCreated = createShadowResources();
@@ -470,11 +487,40 @@ void Renderer::render(Scene& scene)
     characterModel = glm::rotate(characterModel, -charYaw + glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     characterModel = glm::scale(characterModel, glm::vec3(0.6f));
     const bool characterMoving = scene.isCharacterMoving();
-    animatedCharacterModel_.setActiveAnimation(characterMoving
-        ? "spongebob_idle01.anm.001"
-        : "spongebob_idle01.anm");
-    const float animationSpeed = characterMoving ? 1.7f : 1.0f;
-    animatedCharacterModel_.updateAnimation(scene.getElapsedTime() * animationSpeed);
+
+    // Sprawdzenie czy stan ruchu się zmienił - jeśli tak, zresetuj czas animacji dla płynnego przejścia
+    if (characterMoving != wasCharacterMoving_)
+    {
+        characterAnimationTime_ = 0.0f;
+        wasCharacterMoving_ = characterMoving;
+    }
+
+    // Ustawienie odpowiedniej animacji w zależności od stanu ruchu
+    const bool animationSet = animatedCharacterModel_.setActiveAnimation(characterMoving
+        ? "spongebob_idle01.anm.001"  // Animacja chodzenia
+        : "spongebob_idle01.anm");     // Animacja stania (idle)
+
+    // Synchronizacja prędkości animacji z rzeczywistym ruchem postaci
+    float animationSpeed;
+    if (characterMoving)
+    {
+        // Oblicz prędkość animacji na podstawie rzeczywistej prędkości ruchu
+        const float movementSpeed = scene.getCharacterMovementSpeed();
+
+        // Zsynchronizuj prędkość animacji z ruchem, z ograniczeniami min/max
+        animationSpeed = movementSpeed * kWalkAnimationSpeedMultiplier;
+        animationSpeed = std::clamp(animationSpeed, kMinWalkAnimationSpeed, kMaxWalkAnimationSpeed);
+
+        
+    }
+    else
+    {
+        animationSpeed = kIdleAnimationSpeed;
+    }
+
+    // Użycie lokalnego czasu animacji zamiast globalnego dla płynności
+    characterAnimationTime_ += scene.getDeltaTime() * animationSpeed;
+    animatedCharacterModel_.updateAnimation(characterAnimationTime_);
 
     patrickNpcModel_.setActiveAnimation("mixamo.com");
 
@@ -513,8 +559,8 @@ void Renderer::render(Scene& scene)
     const float smallModelOutlineThickness = outlineThickness * 0.32f;
 
     renderModel(sandModel_, sand, view, projection, lightSpace, glm::vec3(0.98f, 0.97f, 0.81f), 0.0f, 0.92f, false, nullptr, true, false, glm::vec3(0.04f, 0.12f, 0.13f), 0.0f, 0.96f, true);
-    renderCoralsInstanced(view, projection, lightSpace, outlineThickness, &scene);
-    renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), &scene);
+    renderCoralsInstanced(view, projection, lightSpace, outlineThickness, nullptr);  // Wyłączone kolizje korali
+    renderVillageHouses(view, projection, lightSpace, outlineThickness, scene.isToonShadingEnabled(), nullptr);  // Wyłączone renderowanie wiosek
     renderAnimatedModel(animatedCharacterModel_, characterModel, view, projection, lightSpace, glm::vec3(1.0f), smallModelOutlineThickness, 1.0f, false, &animatedSpongebobTexture_, true, false, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, 0.62f);
 
     // WYŁĄCZONE: Gary rendering - wszystkie próbowane modele (gary_pet.obj, 3dp_gary.obj) 
@@ -604,66 +650,30 @@ void Renderer::render(Scene& scene)
     }
     */
 
-    // Squidward NPC - rendering z OBJ (AssimpModel)
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-
-    GLuint squidwardShader = scene.isToonShadingEnabled() ? toonProgram_ : pbrProgram_;
-    glUseProgram(squidwardShader);
-
-    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, squidwardNpcTransform_);
-    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.view : pbrUniforms_.view, view);
-    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.projection : pbrUniforms_.projection, projection);
-    setMat4(scene.isToonShadingEnabled() ? toonUniforms_.lightSpaceMatrix : pbrUniforms_.lightSpaceMatrix, lightSpace);
-
-    if (scene.isToonShadingEnabled()) {
-        setVec3(toonUniforms_.baseColor, glm::vec3(1.0f));
-        setVec3(toonUniforms_.lightDirection, kLightDirection);
-        setVec3(toonUniforms_.ambientColor, glm::vec3(0.45f, 0.50f, 0.45f));
-        setInt(toonUniforms_.useToonShading, 1);
-        setInt(toonUniforms_.useMaterialColor, 0);
-        setInt(toonUniforms_.useDiffuseTexture, 1);
-        setFloat(toonUniforms_.materialBrightness, 1.4f);
-        setVec3(toonUniforms_.pointLightPosition, pointLightPosition_);
-        setVec3(toonUniforms_.pointLightColor, pointLightColor_);
-        setFloat(toonUniforms_.pointLightIntensity, pointLightIntensity_);
-        setFloat(toonUniforms_.pointLightRadius, pointLightRadius_);
-        setInt(toonUniforms_.useEmission, 0);
-        setInt(toonUniforms_.shadowMap, 1);
-        setInt(toonUniforms_.diffuseTexture, 0);
-    } else {
-        setVec3(pbrUniforms_.baseColor, glm::vec3(1.0f));
-        setVec3(pbrUniforms_.cameraPosition, glm::vec3(glm::inverse(view)[3]));
-        setVec3(pbrUniforms_.lightDirection, kLightDirection);
-        setVec3(pbrUniforms_.lightColor, glm::vec3(2.0f, 2.2f, 2.1f));
-        setVec3(pbrUniforms_.ambientColor, glm::vec3(0.85f, 0.85f, 0.75f));
-        setInt(pbrUniforms_.useMaterialColor, 0);
-        setInt(pbrUniforms_.useDiffuseTexture, 1);
-        setFloat(pbrUniforms_.materialBrightness, 1.5f);
-        setFloat(pbrUniforms_.metallic, 0.0f);
-        setFloat(pbrUniforms_.roughness, 0.62f);
-        setFloat(pbrUniforms_.ao, 1.0f);
-        setInt(pbrUniforms_.useFastPbr, 0);
-        setVec3(pbrUniforms_.pointLightPosition, pointLightPosition_);
-        setVec3(pbrUniforms_.pointLightColor, pointLightColor_);
-        setFloat(pbrUniforms_.pointLightIntensity, pointLightIntensity_);
-        setFloat(pbrUniforms_.pointLightRadius, pointLightRadius_);
-        setInt(pbrUniforms_.useEmission, 0);
-        setInt(pbrUniforms_.shadowMap, 1);
-        setInt(pbrUniforms_.diffuseTexture, 0);
-    }
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, shadowDepthTexture_);
-    glActiveTexture(GL_TEXTURE0);
-
-    squidwardNpcModel_.Draw(squidwardShader);
-
-    glDisable(GL_CULL_FACE);
+    /* WYŁĄCZONE: Squidward NPC - trudności z renderowaniem modelu
+    // Squidward NPC - rendering z GLB (AnimatedModel)
+    renderAnimatedModel(
+        squidwardNpcModel_,
+        squidwardNpcTransform_,
+        view,
+        projection,
+        lightSpace,
+        glm::vec3(1.0f),            // baseColor
+        smallModelOutlineThickness,  // outlineThickness
+        1.0f,                        // materialBrightness
+        false,                       // useEmission
+        &squidwardNpcTexture_,       // texture
+        true,                        // useToonShading (zgodnie z UI)
+        false,                       // useFastPbr
+        glm::vec3(0.18f, 0.30f, 0.34f), // ambientColor
+        0.0f,                        // metallic
+        0.62f                        // roughness
+    );
+    */
 
     // PatrickNPC
     patrickNpcTransform_ = glm::mat4(1.0f);
-    patrickNpcTransform_ = glm::translate(patrickNpcTransform_, glm::vec3(-5.0f, -.90f, -3.0f));
+    patrickNpcTransform_ = glm::translate(patrickNpcTransform_, glm::vec3(-10.0f, -.9f, -3.0f));
     patrickNpcTransform_ = glm::rotate(patrickNpcTransform_, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     patrickNpcTransform_ = glm::scale(patrickNpcTransform_, glm::vec3(0.3f));
 
@@ -676,8 +686,6 @@ void Renderer::render(Scene& scene)
         renderModel(jellyfishModel_, createJellyfishTransform(i, scene.getJellyfishAnimationTime(i)), view, projection, lightSpace, jellyfishColor, smallModelOutlineThickness, isLightSource ? 2.2f : 1.6f, scene.isToonShadingEnabled(), nullptr, false, isLightSource, glm::vec3(0.18f, 0.30f, 0.34f), 0.0f, isLightSource ? 0.18f : 0.35f);
     }
 
-
-    // Włącz face culling dla domków (renderuj tylko zewnętrzne ściany)
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
@@ -690,14 +698,12 @@ void Renderer::render(Scene& scene)
 
     setInt(glGetUniformLocation(houseShader, "uShadowMap"), 1);
 
-    // Konfiguracja flag shadera
     glActiveTexture(GL_TEXTURE0);
     setInt(glGetUniformLocation(houseShader, "uUseDiffuseTexture"), 1);
     setInt(glGetUniformLocation(houseShader, "uUseMaterialColor"), 0);  
     setFloat(glGetUniformLocation(houseShader, "uMaterialBrightness"), 1.0f);
     setInt(glGetUniformLocation(houseShader, "uDiffuseTexture"), 0);
 
-    // Wspólna konfiguracja uniformów dla WSZYSTKICH domków
     if (!scene.isToonShadingEnabled()) {
         // PBR mode
         setVec3(pbrUniforms_.baseColor, glm::vec3(1.0f, 1.0f, 1.0f));
@@ -756,8 +762,37 @@ void Renderer::render(Scene& scene)
     setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, squidwardTransform_);
     squidwardModel_.Draw(houseShader);
 
-    // Wyłącz face culling po renderowaniu domków
+    // Kraboburger 
+    //setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, kraboburgerTransform_);
+    //kraboburgerModel_.Draw(houseShader);
+
+    // Lighthouse 
+    //setMat4(scene.isToonShadingEnabled() ? toonUniforms_.model : pbrUniforms_.model, lighthouseTransform_);
+    //lighthouseModel_.Draw(houseShader);
+
     glDisable(GL_CULL_FACE);
+
+    
+    if (spongebobModel_.isLoaded())
+    {
+        addModelCollision(scene, spongebobModel_, spongebobTransform_, 0.0f, 0.72f);
+    }
+    if (patrickModel_.isLoaded())
+    {
+        addModelCollision(scene, patrickModel_, patrickTransform_, 0.0f, 0.72f);
+    }
+    if (squidwardModel_.isLoaded())
+    {
+        addModelCollision(scene, squidwardModel_, squidwardTransform_, 0.0f, 0.72f);
+    }
+    /*if (kraboburgerModel_.isLoaded())
+    {
+        addModelCollision(scene, kraboburgerModel_, kraboburgerTransform_, 0.0f, 0.72f);
+    }
+    if (lighthouseModel_.isLoaded())
+    {
+        addModelCollision(scene, lighthouseModel_, lighthouseTransform_, 0.0f, 0.72f);
+    }*/
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE1);
@@ -830,7 +865,6 @@ void Renderer::shutdown()
     coral2Model_.destroy();
     coral1Model_.destroy();
     squidwardModel_.destroy();
-    // squidwardNpcModel_ - AssimpModel (OBJ), nie wymaga destroy()
     patrickModel_.destroy();
     spongebobModel_.destroy();
     sandModel_.destroy();
@@ -1225,7 +1259,7 @@ void Renderer::renderModel(const Model& assetModel, const glm::mat4& model, cons
         setVec3(pbrUniforms_.baseColor, baseColor);
         setVec3(pbrUniforms_.cameraPosition, glm::vec3(glm::inverse(view)[3]));
         setVec3(pbrUniforms_.lightDirection, kLightDirection);
-        setVec3(pbrUniforms_.lightColor, glm::vec3(3.5f, 3.8f, 3.6f));  // Brighter directional light
+        setVec3(pbrUniforms_.lightColor, glm::vec3(3.5f, 3.8f, 3.6f));  
         setVec3(pbrUniforms_.ambientColor, ambientColor);
         setInt(pbrUniforms_.useMaterialColor, useMaterialColor ? 1 : 0);
         setInt(pbrUniforms_.useDiffuseTexture, diffuseTexture != nullptr ? 1 : 0);
@@ -1346,11 +1380,45 @@ void Renderer::renderShadowMap(const glm::mat4& lightSpace, const glm::mat4& spo
     glCullFace(GL_BACK);
     glUseProgram(shadowProgram_);
 
-    // Cienie dla Squidward NPC (AssimpModel)
-    setMat4(shadowUniforms_.model, squidwardNpcTransform_);
-    setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
-    setInt(shadowUniforms_.useInstancing, 0);
-    squidwardNpcModel_.Draw(shadowProgram_);
+    if (spongebobModel_.isLoaded())
+    {
+        setMat4(shadowUniforms_.model, spongebobTransform);
+        setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
+        setInt(shadowUniforms_.useInstancing, 0);
+        spongebobModel_.Draw(shadowProgram_);
+    }
+    if (patrickModel_.isLoaded())
+    {
+        setMat4(shadowUniforms_.model, patrickTransform);
+        setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
+        setInt(shadowUniforms_.useInstancing, 0);
+        patrickModel_.Draw(shadowProgram_);
+    }
+    if (squidwardModel_.isLoaded())
+    {
+        setMat4(shadowUniforms_.model, squidwardTransform);
+        setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
+        setInt(shadowUniforms_.useInstancing, 0);
+        squidwardModel_.Draw(shadowProgram_);
+    }
+    /*if (kraboburgerModel_.isLoaded())
+    {
+        setMat4(shadowUniforms_.model, kraboburgerTransform_);
+        setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
+        setInt(shadowUniforms_.useInstancing, 0);
+        kraboburgerModel_.Draw(shadowProgram_);
+    }
+    if (lighthouseModel_.isLoaded())
+    {
+        setMat4(shadowUniforms_.model, lighthouseTransform_);
+        setMat4(shadowUniforms_.lightSpaceMatrix, lightSpace);
+        setInt(shadowUniforms_.useInstancing, 0);
+        lighthouseModel_.Draw(shadowProgram_);
+    }*/
+
+    // Cienie dla Squidward NPC (AnimatedModel - GLB)
+    //renderAnimatedModelShadowCaster(squidwardNpcModel_, lightSpace, squidwardNpcTransform_);
+    
 
     renderAnimatedModelShadowCaster(animatedCharacterModel_, lightSpace, characterTransform);
     renderAnimatedModelShadowCaster(patrickNpcModel_, lightSpace, patrickNpcTransform_);
@@ -1405,38 +1473,10 @@ void Renderer::renderAnimatedModelShadowCaster(const AnimatedModel& assetModel, 
 
 void Renderer::renderVillageHouses(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& lightSpace, float outlineThickness, bool useToonShading, Scene* collisionScene) const
 {
-    
-    if (collisionScene == nullptr)
-    {
-        return;
-    }
-
-    for (int i = 0; i < kVillageHouseCount; ++i)
-    {
-        const int modelIndex = i % 3;
-        const glm::mat4& transform = villageHouseTransforms_[static_cast<std::size_t>(i)];
-
-        if (modelIndex == 0 && spongebobModel_.isLoaded())
-        {
-            addModelCollision(*collisionScene, spongebobModel_, transform, 0.0f, 1.0f);
-        }
-        else if (modelIndex == 1 && patrickModel_.isLoaded())
-        {
-            addModelCollision(*collisionScene, patrickModel_, transform, 0.0f, 1.0f);
-        }
-        else if (modelIndex == 2 && squidwardModel_.isLoaded())
-        {
-            addModelCollision(*collisionScene, squidwardModel_, transform, 0.0f, 1.0f);
-        }
-    }
 }
 
 void Renderer::renderVillageHouseShadowCasters(const glm::mat4& lightSpace) const
-{/*
-    for (int i = 0; i < kVillageHouseCount; ++i)
-    {
-        renderModelShadowCaster(getHouseModel(i % 3), lightSpace, villageHouseTransforms_[static_cast<std::size_t>(i)]);
-    }*/
+{
 }
 
 void Renderer::renderCoralShadowCastersInstanced(const glm::mat4& lightSpace) const
@@ -1564,7 +1604,7 @@ void Renderer::renderCoralsInstanced(const glm::mat4& view, const glm::mat4& pro
     setMat4(toonUniforms_.lightSpaceMatrix, lightSpace);
     setVec3(toonUniforms_.baseColor, glm::vec3(0.95f, 0.25f, 0.48f));
     setVec3(toonUniforms_.lightDirection, kLightDirection);
-    setVec3(toonUniforms_.ambientColor, glm::vec3(0.10f, 0.18f, 0.20f));  // Zmniejszony niebieski ambient
+    setVec3(toonUniforms_.ambientColor, glm::vec3(0.10f, 0.18f, 0.20f));  
     setInt(toonUniforms_.useToonShading, 0);
     setInt(toonUniforms_.useMaterialColor, 1);
     setInt(toonUniforms_.useDiffuseTexture, 0);
@@ -1652,16 +1692,14 @@ void Renderer::drawCoralInstancedByIndex(int modelIndex, GLuint instanceBuffer, 
 }
 
 /*
-const Model& Renderer::getHouseModel(int modelIndex) const
+const AssimpModel& Renderer::getHouseModel(int modelIndex) const
 {
-
     switch (modelIndex % 3)
     {
         case 0: return spongebobModel_;
         case 1: return patrickModel_;
         default: return squidwardModel_;
     }
-
 }
 */
 
@@ -1689,18 +1727,33 @@ void Renderer::initializeStaticTransforms(Scene& scene)
         glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.90f, -3.0f)),
         glm::vec3(0.75f)
     );
+    kraboburgerTransform_ = glm::scale(
+        glm::rotate(
+            glm::translate(glm::mat4(1.0f), glm::vec3(6.5f, -0.90f, 6.5f)),
+            glm::radians(225.0f),  
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        ),
+        glm::vec3(0.35f)  
+    );
+    lighthouseTransform_ = glm::scale(
+        glm::rotate(
+            glm::translate(glm::mat4(1.0f), glm::vec3(-6.5f, -0.90f, 6.5f)),
+            glm::radians(135.0f),  
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        ),
+        glm::vec3(0.35f)  
+    );
     squidwardNpcTransform_ = glm::scale(
         glm::rotate(
             glm::translate(
                 glm::mat4(1.0f),
                 glm::vec3(
-                    kSquidwardNpcX,
-                    //scene.getSandHeight(kSquidwardNpcX, kSquidwardNpcZ) - squidwardNpcModel_.minY() * kSquidwardNpcScale,
-                    scene.getSandHeight(kSquidwardNpcX, kSquidwardNpcZ),
+                    kSquidwardNpcX, 
+                    -0.90f,
                     kSquidwardNpcZ
                 )
             ),
-            glm::radians(-90.0f),
+            glm::radians(90.0f),  
             glm::vec3(0.0f, 1.0f, 0.0f)
         ),
         glm::vec3(kSquidwardNpcScale)
